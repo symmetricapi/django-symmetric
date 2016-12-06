@@ -50,10 +50,6 @@ class ApiTest(TestCase):
 		response = c.get(api_reverse(api_json_test) + '?json=true')
 		self.assertEqual(response.status_code, 200)
 
-		# Test jsonp
-		response = c.get(api_reverse(api_json_test) + '?json=true&callback=test')
-		self.assertEqual(response.status_code, 403)
-
 		# Test versioning
 		response = c.get(api_reverse(api_version_test) + '?version=1')
 		self.assertEqual(response.status_code, 200)
