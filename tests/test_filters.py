@@ -2,8 +2,8 @@ from django.conf import settings
 from django.db import models
 from django.test import TestCase
 
-from api.filters import subclass_filter
-from api.functions import datetime_to_iso_8601, get_object_list_data
+from symmetric.filters import subclass_filter
+from symmetric.functions import datetime_to_iso_8601, get_object_list_data
 
 class Place(models.Model):
 	name = models.CharField(max_length=127)

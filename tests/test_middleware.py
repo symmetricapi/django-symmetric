@@ -7,7 +7,7 @@ from django.http import HttpResponse
 from django.test import TestCase
 from django.test.client import Client
 
-from api.urls import api_reverse
+from symmetric.urls import api_reverse
 
 def api_test(request):
 	if hasattr(request, 'api') and request.api:
@@ -45,20 +45,24 @@ class ApiTest(TestCase):
 		c = Client()
 		response = c.get(api_reverse(api_test))
 		self.assertEqual(response.status_code, 200)
-		
+
 		# Test json
 		response = c.get(api_reverse(api_json_test) + '?json=true')
 		self.assertEqual(response.status_code, 200)
-		
+
+		# Test jsonp
+		response = c.get(api_reverse(api_json_test) + '?json=true&callback=test')
+		self.assertEqual(response.status_code, 403)
+
 		# Test versioning
 		response = c.get(api_reverse(api_version_test) + '?version=1')
 		self.assertEqual(response.status_code, 200)
-		
+
 		response = c.get(api_reverse(api_version_test, 1) + '?version=1')
 		self.assertEqual(response.status_code, 200)
-		
+
 		response = c.get(api_reverse(api_version_test, 2) + '?version=2')
 		self.assertEqual(response.status_code, 200)
-		
+
 		response = c.get(api_reverse(api_version_test, 1) + '?version=2')
 		self.assertNotEqual(response.status_code, 200)

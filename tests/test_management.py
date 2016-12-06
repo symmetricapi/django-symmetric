@@ -1,6 +1,6 @@
 from django.test import TestCase
 
-from api.management.functions import *
+from symmetric.management.functions import *
 
 class ApiManagementTest(TestCase):
 

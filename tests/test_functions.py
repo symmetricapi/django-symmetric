@@ -1,6 +1,6 @@
 from django.test import TestCase
 
-from api.functions import *
+from symmetric.functions import *
 
 class ApiFunctionsTest(TestCase):
 
