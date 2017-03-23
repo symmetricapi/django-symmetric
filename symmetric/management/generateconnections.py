@@ -7,10 +7,10 @@ from django.conf import settings
 from django.core.management.base import CommandError
 from django.template import Template, Context
 
-import api.management.overrides
-from api.functions import _ApiModel
-from api.management.functions import format_regex_stack, get_app_url_prefix, is_sublist, get_subclass_filter, get_model_name
-from api.views import ApiAction, ApiRequirement, BasicApiView, api_view
+import symmetric.management.overrides
+from symmetric.functions import _ApiModel
+from symmetric.management.functions import format_regex_stack, get_app_url_prefix, is_sublist, get_subclass_filter, get_model_name
+from symmetric.views import ApiAction, ApiRequirement, BasicApiView, api_view
 
 """
 	Connection actions are mapped in the following way:

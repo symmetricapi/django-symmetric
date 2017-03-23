@@ -5,13 +5,13 @@ from optparse import make_option
 from django.conf import settings
 from django.core.management.base import BaseCommand
 
-import api.management.overrides
-from api.filters import combine_filters
-from api.functions import _ApiModel, get_object_data
-from api.management.functions import get_doc_str, get_resource_type, format_regex_stack, is_anonymous, is_auto_now
-from api.views import api_view, api_related_view, api_filter_contacts_view
-from api.views import api_login_view, api_logout_view, api_create_user_view, api_set_password_view, api_reset_password_view
-from api.views import ApiAction, ApiRequirement, BasicApiView
+import symmetric.management.overrides
+from symmetric.filters import combine_filters
+from symmetric.functions import _ApiModel, get_object_data
+from symmetric.management.functions import get_doc_str, get_resource_type, format_regex_stack, is_anonymous, is_auto_now
+from symmetric.views import api_view, api_related_view, api_filter_contacts_view
+from symmetric.views import api_login_view, api_logout_view, api_create_user_view, api_set_password_view, api_reset_password_view
+from symmetric.views import ApiAction, ApiRequirement, BasicApiView
 
 class Command(BaseCommand):
 	help = 'Generate documentation for API endpoints.'

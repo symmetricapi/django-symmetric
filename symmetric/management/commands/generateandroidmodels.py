@@ -5,8 +5,8 @@ from optparse import make_option
 from django.core.management.base import BaseCommand
 from django.template import Template
 
-from api.management.functions import get_api_properties
-from api.management.generatemodels import GenerateModelsCommand
+from symmetric.management.functions import get_api_properties
+from symmetric.management.generatemodels import GenerateModelsCommand
 
 class ApiPropertyGetMethodTransformer(ast.NodeTransformer):
 	"""Renames uses of other api properties into get method calls e.g. getProperty()."""

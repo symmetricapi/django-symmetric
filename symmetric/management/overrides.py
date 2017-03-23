@@ -1,8 +1,8 @@
 from django.apps import apps
 
-import api.filters
-import api.views
-from api.views import ApiAction, ApiRequirement
+import symmetric.filters
+import symmetric.views
+from symmetric.views import ApiAction, ApiRequirement
 
 get_model = apps.get_model
 

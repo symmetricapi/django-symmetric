@@ -4,7 +4,7 @@ from optparse import make_option
 from django.core.management.base import BaseCommand
 from django.template import Template
 
-from api.management.generateconnections import GenerateConnectionsCommand
+from symmetric.management.generateconnections import GenerateConnectionsCommand
 
 READ_OBJECT_METHOD = """
 	public void read{{ name }}{% if param %}With{{ param }}({{ param_type }} {{ name_lower }}{{ param }}){% else %}(){% endif %}

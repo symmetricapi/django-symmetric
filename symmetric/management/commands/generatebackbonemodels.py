@@ -10,13 +10,13 @@ from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.db.models.fields import NOT_PROVIDED, DateField
 
-import api.management.overrides
-from api.functions import camel_case_to_underscore, underscore_to_camel_case
-from api.management.functions import get_base_classes, get_resource_type, get_subclass_filter, format_regex_stack
-from api.management.functions import get_model_name, get_model_name_plural, get_collection_name, get_collection_name_plural
-from api.management.translate import translate_code
-from api.models import get_related_model
-from api.views import ApiAction, ApiRequirement, BasicApiView, api_view
+import symmetric.management.overrides
+from symmetric.functions import camel_case_to_underscore, underscore_to_camel_case
+from symmetric.management.functions import get_base_classes, get_resource_type, get_subclass_filter, format_regex_stack
+from symmetric.management.functions import get_model_name, get_model_name_plural, get_collection_name, get_collection_name_plural
+from symmetric.management.translate import translate_code
+from symmetric.models import get_related_model
+from symmetric.views import ApiAction, ApiRequirement, BasicApiView, api_view
 
 class BackboneAttributeTransformer(ast.NodeTransformer):
 	"""Any access to self.property_name should be converted to self.attributes.property_name if it is a field."""

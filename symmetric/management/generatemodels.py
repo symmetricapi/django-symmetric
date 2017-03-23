@@ -9,12 +9,12 @@ from django.db.models.fields import NOT_PROVIDED, TimeField, DateField
 from django.db.models.fields.related import ForeignKey
 from django.template import Template, Context
 
-import api.management.overrides
-from api.functions import _ApiModel, underscore_to_camel_case
-from api.management.functions import get_base_classes, get_base_models, get_base_model, get_field, has_field
-from api.management.translate import translate_code
-from api.models import get_related_model
-from api.views import ApiAction, ApiRequirement, BasicApiView, api_view
+import symmetric.management.overrides
+from symmetric.functions import _ApiModel, underscore_to_camel_case
+from symmetric.management.functions import get_base_classes, get_base_models, get_base_model, get_field, has_field
+from symmetric.management.translate import translate_code
+from symmetric.models import get_related_model
+from symmetric.views import ApiAction, ApiRequirement, BasicApiView, api_view
 
 get_model = apps.get_model
 

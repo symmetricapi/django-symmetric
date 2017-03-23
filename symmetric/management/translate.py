@@ -2,7 +2,7 @@ import ast
 
 from django.conf import settings
 
-from api.functions import underscore_to_camel_case
+from symmetric.functions import underscore_to_camel_case
 
 default_token_mapping = {
 	ast.Add: '+', ast.Sub: '-', ast.Mult: '*', ast.Div: '/', ast.Mod: '%', ast.LShift: '<<', ast.RShift: '>>', ast.BitOr: '|', ast.BitXor: '^', ast.BitAnd: '&', ast.And: '&&', ast.Or: '||',
@@ -64,8 +64,8 @@ class KeywordTransformer(ast.NodeTransformer):
 			self.id_none = 'null'
 			self.id_true = 'true'
 			self.id_false = 'false'
-		if lang == 'js':
-			self.id_none = 'undefined'
+		if lang == 'js' or lang == 'es6':
+			self.id_none = 'void(0)'
 
 	def visit_Name(self, node):
 		name = node.id.lower()
@@ -144,6 +144,16 @@ class StringFormatTransformer(ast.NodeTransformer):
 				format = translate_ast(left, js_token_mapping)
 				for elt in elts:
 					format += ".replace(/%%[sdfg]/, %s)" % translate_ast(elt, js_token_mapping)
+			elif self.lang == 'es6':
+				format = translate_ast(left, js_token_mapping)
+				for elt in elts:
+					idx = format.find('%')
+					percentf = format[idx:idx+2]
+					if percentf == '%%':
+						format = format.replace(percentf, '\u{25}', 1)
+					else:
+						format = format.replace(percentf, '${%s}' % translate_ast(elt, js_token_mapping), 1)
+				format = '`%s`' % format[1:-1]
 			elif self.lang == 'objc':
 				format = '[NSString stringWithFormat:%s' % translate_ast(left, objc_token_mapping).replace("%s", "%@")
 				for elt in elts:
@@ -180,7 +190,7 @@ class CastTransformer(ast.NodeTransformer):
 			else:
 				return ast.Attribute(node.args[0], ast.Name('length', ast.Load()), ast.Load())
 		else:
-			if self.lang == 'js':
+			if self.lang == 'js' or lang == 'es6':
 				return node.args[0]
 			else:
 				return ast.UnaryOp('(%s)' % node.func.id, node.args[0])
@@ -201,7 +211,7 @@ def translate_code(code, lang='js', transformer=None):
 	node = StringFormatTransformer(lang).visit(node)
 	# Choose a token mapping and then perform the translation
 	token_mapping = default_token_mapping
-	if lang == 'js':
+	if lang == 'js' or lang == 'es6':
 		token_mapping = js_token_mapping
 	elif lang == 'objc':
 		token_mapping = objc_token_mapping
