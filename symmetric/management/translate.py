@@ -25,6 +25,10 @@ js_token_mapping.update({ast.Eq: '===', ast.NotEq: '!==', ast.Is: '===', ast.IsN
 objc_token_mapping = default_token_mapping.copy()
 objc_token_mapping.update({ast.Str: ('@"', '"'), ast.Subscript: ('[', ' substringWithRange:NSMakeRange(', ')]')})
 
+# Bridge to objc, because substring method in swift is too complicated: http://stackoverflow.com/questions/39677330/how-does-string-substring-work-in-swift-3
+swift_token_mapping = default_token_mapping.copy()
+swift_token_mapping.update({ast.Subscript: ('(', ' as NSString).substring(with: NSMakeRange(', '))')})
+
 def translate_ast(node, token_mapping=default_token_mapping):
 	tokens = token_mapping.get(type(node))
 	if not tokens:
@@ -59,6 +63,11 @@ class KeywordTransformer(ast.NodeTransformer):
 			self.id_none = 'nil'
 			self.id_true = 'YES'
 			self.id_false = 'NO'
+		elif lang == 'swift':
+			self.id_self = 'self'
+			self.id_none = 'nil'
+			self.id_true = 'true'
+			self.id_false = 'false'
 		else:
 			self.id_self = 'this'
 			self.id_none = 'null'
@@ -159,6 +168,11 @@ class StringFormatTransformer(ast.NodeTransformer):
 				for elt in elts:
 					format += ", %s" % translate_ast(elt, objc_token_mapping)
 				format += ']'
+			elif self.lang == 'swift':
+				format = 'String(format:%s' % translate_ast(left, swift_token_mapping).replace("%s", "%@")
+				for elt in elts:
+					format += ", %s" % translate_ast(elt, swift_token_mapping)
+				format += ')'
 			elif self.lang == 'java':
 				format = 'String.format(%s' % translate_ast(left, default_token_mapping)
 				for elt in elts:
@@ -174,7 +188,7 @@ class SliceTransformer(ast.NodeTransformer):
 		self.lang = lang
 
 	def visit_Slice(self, node):
-		if self.lang == 'objc' and node.upper:
+		if (self.lang == 'objc' or self.lang == 'swift') and node.upper:
 			node.upper = ast.BinOp(node.upper, ast.Sub(), node.lower)
 		return node
 
@@ -215,6 +229,8 @@ def translate_code(code, lang='js', transformer=None):
 		token_mapping = js_token_mapping
 	elif lang == 'objc':
 		token_mapping = objc_token_mapping
+	elif lang == 'swift':
+		token_mapping = swift_token_mapping
 	return translate_ast(node, token_mapping)
 
 def data_to_objc(data, mutable=True):
@@ -236,3 +252,21 @@ def data_to_objc(data, mutable=True):
 	if mutable:
 		return '[%s mutableCopy]' % objc
 	return objc
+
+def data_to_swift(data):
+	swift = ''
+	if callable(data):
+		data = data()
+	if data is None:
+		return 'nil'
+	if isinstance(data, (str, unicode)):
+		return '"%s"' % data.replace('"', '\\"')
+	elif isinstance(data, bool):
+		return 'true' if data else 'false'
+	elif isinstance(data, (int, float)):
+		return '@%s' % data
+	elif isinstance(data, (tuple, list, set)):
+		swift = '[%s]' % ', '.join([data_to_swift(entry) for entry in data])
+	elif isinstance(data, dict):
+		swift = '[%s]' % ', '.join(['%s: %s' % (data_to_swift(key), data_to_swift(data[key])) for key in data])
+	return swift
