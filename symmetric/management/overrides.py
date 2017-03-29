@@ -86,9 +86,9 @@ class _api_filter_contacts_view(object):
 		# Empty call so that django will accept is as a view
 		pass
 
-api.views.api_view = _api_view
-api.views.api_related_view = _api_related_view
-_api_filter_contacts_view.doc = api.views.api_filter_contacts_view.__doc__
-api.views.api_filter_contacts_view = _api_filter_contacts_view
-api.filters.subclass_filter = _subclass_filter
-api.filters.combine_filters = _combine_filters
+symmetric.views.api_view = _api_view
+symmetric.views.api_related_view = _api_related_view
+_api_filter_contacts_view.doc = symmetric.views.api_filter_contacts_view.__doc__
+symmetric.views.api_filter_contacts_view = _api_filter_contacts_view
+symmetric.filters.subclass_filter = _subclass_filter
+symmetric.filters.combine_filters = _combine_filters

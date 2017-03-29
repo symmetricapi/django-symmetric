@@ -38,7 +38,7 @@ def get_api_properties(model):
 
 def get_resource_type(regex_stack, pattern):
 	"""Given a pattern, determine its type of 'Single Object', 'Object', or 'Collection'."""
-	from api.views import BasicApiView
+	from symmetric.views import BasicApiView
 	url = ''.join(regex_stack)
 	view = pattern.callback
 	single_object = False
@@ -95,7 +95,7 @@ def has_field(model, field_name, include_inherited=True):
 		return False
 
 def get_subclass_filter(view):
-	from api.filters import subclass_filter, combine_filters
+	from symmetric.filters import subclass_filter, combine_filters
 	filter = None
 	def _from_combined(combined):
 		for temp in combined.filters:
@@ -149,7 +149,7 @@ def is_sublist(list, sublist):
 
 def is_anonymous(view):
 	"""Returns True/False depending on if the view allows anonymous access or not."""
-	from api.views import ApiRequirement
+	from symmetric.views import ApiRequirement
 	if hasattr(view, 'requirements'):
 		if view.requirements & ApiRequirement.LOGIN and not view.requirements & ApiRequirement.ANONYMOUS_READ:
 			return False
@@ -164,6 +164,14 @@ def is_auto_now(field_name, view):
 			if hasattr(field, 'auto_now') and field.auto_now:
 				return True
 	return False
+
+def is_readonly(model, field_name):
+	from symmetric.functions import _ApiModel
+	api_model = _ApiModel(model)
+	for decoded_name, encoded_name, encode, decode in api_model.fields:
+		if field_name == decoded_name:
+			return encoded_name not in api_model.encoded_fields
+	return True
 
 def format_regex_stack(regex_stack):
 	"""Format a list or tuple of regex url patterns into a single path."""
