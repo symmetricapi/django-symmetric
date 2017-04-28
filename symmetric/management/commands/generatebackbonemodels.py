@@ -1,5 +1,6 @@
 import ast
 import json
+import os
 import re
 import sys
 from functools import partial
@@ -16,6 +17,7 @@ from symmetric.functions import camel_case_to_underscore, underscore_to_camel_ca
 from symmetric.management.codeemitter import CodeEmitter
 from symmetric.management.functions import get_base_classes, get_resource_type, get_subclass_filter, format_regex_stack, is_readonly
 from symmetric.management.functions import get_model_name, get_model_name_plural, get_collection_name, get_collection_name_plural
+from symmetric.management.rules import ApiFieldRule
 from symmetric.management.translate import translate_code
 from symmetric.models import get_related_model
 from symmetric.views import ApiAction, ApiRequirement, BasicApiView, api_view
@@ -37,9 +39,20 @@ class BackboneAttributeTransformer(ast.NodeTransformer):
 			self.visit(node.value)
 		return node
 
+def unjson(jsn):
+			# Convert spaces to tabs and json keys to unquoted javascript attributes
+			return re.sub(r'"([a-zA-Z][^"]*)":', r'\1:', jsn)
+
+separators = (',', ': ')
+
 class Command(BaseCommand):
 	help = 'Generate backbone models for API endpoints.'
 	option_list = BaseCommand.option_list + (
+			make_option('--dest',
+				dest='dest',
+				type='string',
+				default='.',
+				help='Output the models and colllections into models/ and collections/ inside the path given.'),
 			make_option('--module-type',
 				dest='module_type',
 				type='string',
@@ -70,6 +83,11 @@ class Command(BaseCommand):
 				dest='choices',
 				default=False,
 				help='Add the choices for each field under a choices object.'),
+			make_option('--formats',
+				action='store_true',
+				dest='formats',
+				default=False,
+				help='Add all field format messages used as errors when a field is invalid.'),
 			make_option('--cord',
 				action='store_true',
 				dest='cord',
@@ -131,15 +149,15 @@ class Command(BaseCommand):
 				self.models[name]['defaults'][key] = default
 
 	def add_descriptions(self, model):
-		descriptions = {}
+		subtitles = {}
 		for field in model._meta.fields:
 			if hasattr(field, 'help_text') and field.help_text:
 				key = field.name
 				if self.camelcase:
 					key = underscore_to_camel_case(key)
-				descriptions[key] = force_unicode(field.help_text)
-		if descriptions:
-			self.models[get_model_name(model)]['descriptions'] = descriptions
+				subtitles[key] = force_unicode(field.help_text)
+		if subtitles:
+			self.models[get_model_name(model)]['subtitles'] = subtitles
 
 	def add_titles(self, model):
 		titles = {}
@@ -151,11 +169,29 @@ class Command(BaseCommand):
 		if titles:
 			self.models[get_model_name(model)]['titles'] = titles
 
+	def add_formats(self, model):
+		instructions = {}
+		for field in model._meta.fields:
+			key = field.name
+			if self.camelcase:
+				key = underscore_to_camel_case(key)
+			message = force_unicode(field.error_messages.get('invalid', field.error_messages.get('invalid_choice', '')))
+			if message:
+				instructions[key] = message
+		if instructions:
+			self.models[get_model_name(model)]['instructions'] = instructions
+
 	def add_validation(self, model):
 		rules = {}
+		for field in model._meta.fields:
+			key = field.name
+			if self.camelcase:
+				key = underscore_to_camel_case(key)
+			rules[key] = ApiFieldRule(field).rule
 		if rules:
 			self.models[get_model_name(model)]['rules'] = rules
-			self.models[get_model_name(model)]['validate'] = 'validate'
+			if not self.cord:
+				self.models[get_model_name(model)]['validate'] = 'validate'
 
 	def add_parse(self, model):
 		fields = []
@@ -198,10 +234,11 @@ class Command(BaseCommand):
 				model_properties_args[name] = set()
 				code = re.sub(r'this.([0-9a-zA-Z_]*)', replace_properties, code)
 				model_properties[name] = re.sub(r'this.get\("([0-9a-zA-Z_]*)"\)', partial(replace_attributes, model_properties_args[name]), code)
+		model_name = get_model_name(model)
 		if model_properties:
-			self.model_properties[get_model_name(model)] = model_properties
+			self.model_properties[model_name] = model_properties
 		if model_properties_args:
-			self.model_properties_args[get_model_name(model)] = model_properties_args
+			self.model_properties_args[model_name] = model_properties_args
 
 	def get_include_related(self, model):
 		related_models = {}
@@ -234,6 +271,8 @@ class Command(BaseCommand):
 				self.add_defaults(model)
 			if self.descriptions:
 				self.add_descriptions(model)
+			if self.formats:
+				self.add_formats(model)
 			if  self.titles:
 				self.add_titles(model)
 			if self.validation:
@@ -255,18 +294,24 @@ class Command(BaseCommand):
 		models = models.split('|')
 		count = len(models)
 		if count > 1:
-			models = ['if (attrs.hasOwnProperty(models.%s.prototype.idAttribute)) {\nreturn new models.%s(attrs, options);\n}\n' % (model, model) for model in models if self.models.has_key(model)]
+			models = ['if (attrs.hasOwnProperty(%s.prototype.idAttribute)) {\nreturn new %s(attrs, options);\n}\n' % (model, model) for model in models if self.models.has_key(model)]
 			if len(models) < count:
 				models.append('return new Backbone.Model(attrs, options);\n')
 			return '%s {\n%s}' % (self.get_anon_func('attrs, options'), 'else '.join(models))
 		else:
-			return 'models.' + models[0]
+			return models[0]
 
 	def get_anon_func(self, args=''):
 		if self.es6:
 			return '(%s) =>' % args
 		else:
 			return 'function(%s)' % args
+
+	def get_proto_func(self, name, args=''):
+		if self.es6:
+			return '%s(%s)' % (name, args)
+		else:
+			return '%s: function(%s)' % (name, args)
 
 	def enum_patterns(self, patterns):
 		for pattern in patterns:
@@ -305,10 +350,15 @@ class Command(BaseCommand):
 		if self.regex_stack:
 			self.regex_stack.pop()
 
-	def print_module_header(self, f=sys.stdout):
+	def print_module_header(self, f=sys.stdout, dependencies=[]):
 		# Module definition start
 		if self.module_type == 'amd':
-			self.emit("define(['backbone', 'underscore'], %s {" % self.get_anon_func('Backbone, _'))
+			define_deps = ['backbone', 'underscore'] + dependencies
+			define_deps = ["'%s'" % dd for dd in define_deps]
+			define_deps = ', '.join(define_deps)
+			define_args = ['Backbone', '_'] + [dep.split('/')[-1] for dep in dependencies]
+			define_args = ', '.join(define_args)
+			self.emit("define([%s], %s {" % (define_deps, self.get_anon_func(define_args)))
 		elif self.module_type != 'esm':
 			self.emit('(%s {' % self.get_anon_func())
 		if self.module_type != 'esm':
@@ -319,39 +369,213 @@ class Command(BaseCommand):
 				"%s _ = require('underscore');" % self.const,
 				''
 			)
+			if dependencies:
+				self.emit(*["%s %s = require('%s');" % (self.const, dep.split('/')[-1], dep) for dep in dependencies])
+				self.emit('')
 		elif self.module_type == 'esm':
 			self.emit(
 				"import Backbone from 'backbone';",
 				"import _ from 'underscore';",
 				''
 			)
+			if dependencies:
+				self.emit(*["import %s from '%s';" % (dep.split('/')[-1], dep) for dep in dependencies])
+				self.emit('')
 
-	def print_module_footer(self, f=sys.stdout):
+	def print_module_footer(self, f=sys.stdout, name=None):
 		# Module definition end
 		if self.module_type == 'amd':
-			self.emit('return { models: models, collections: collections, singletons: singletons}; });')
+			if name:
+				self.emit('return %s; });' % name)
+			else:
+				self.emit('return { models: models, collections: collections, singletons: singletons}; });')
 		elif self.module_type == 'cjs':
+			if name:
+				self.emit('module.exports = %s;' % name)
 			self.emit(
 				'exports.models = models;',
 				'exports.collections = collections;',
 				'exports.singletons = singletons;'
 			)
 		elif self.module_type == 'esm':
-			self.emit('export { models, collections, singletons };')
+			if name:
+				self.emit('export default %s;' % name)
+			else:
+				self.emit('export default { models, collections, singletons };')
 		else:
-			self.emit(
-				'window.models = models;',
-				'window.collections = collections;',
-				'window.singletons = singletons;'
-			)
+			if name:
+				self.emit('window.%s = %s' % (name, name))
+			else:
+				self.emit(
+					'window.models = models;',
+					'window.collections = collections;',
+					'window.singletons = singletons;'
+				)
 		if self.module_type != 'amd' and self.module_type != 'esm':
 			self.emit('})();')
 
+	def output_model(self, name, model):
+		path = os.path.join(self.dest_models, '%s.js' % name)
+
+		include_related = self.include_related.get(name)
+		model_properties = self.model_properties.get(name)
+		if model_properties and self.cord:
+			model['computed'] = 'computed'
+		related_collections = self.related_collections.get(name)
+		if related_collections:
+			model['related'] = 'related'
+
+		with open(path, 'w') as f:
+			self.emit = CodeEmitter(f, self.indent)
+			self.print_module_header(f)
+			model_js = unjson(json.dumps(model, separators=separators, indent=True, sort_keys=True))
+
+			# Convert all urlRoot attributes into functions.
+			# The collection's url should be overridden when the object already exists with an id (!isNew) because it may be part of a heterogeneous subclass collection or related collection that does not have an endpoint for updating the object
+			# A newUrl is also defined/undefined when the model is created outside of a collection it can still use its collection's url for creating a new instance
+			model_js = re.sub(r'urlRoot: "([^"]*)"',
+				r"""%s {
+					if (!this.isNew()) {
+						return "\1";
+					} else if (!this.collection) {
+						return this.newUrl;
+					}
+				}""" % self.get_proto_func('urlRoot'), model_js)
+
+			# Convert all parse attributes into a function
+			parse_related = []
+			if include_related:
+				for i, field_name in enumerate(include_related):
+					parse_related.append('if (response.%s) {\nresponse.%s = new %s(response.%s);\n}' % (field_name, field_name, include_related[field_name], field_name))
+			parse_related = '\n'.join(parse_related)
+			model_js = re.sub(r'parse: "([^"]*)"',
+				r"""%s {
+					if (response) {
+						_.each([\1], %s {
+							if (response[attr]) {
+								response[attr] = new Date(response[attr]);
+							}
+						});
+						%s
+					}
+					// Custom parse function can also process response
+					if (this.extendedParse) {
+						response = this.extendedParse(response);
+					}
+					return response;
+				}""" % (self.get_proto_func('parse', 'response'), self.get_anon_func('attr'), parse_related), model_js)
+
+			# Convert all validate entries to functions
+			model_js = re.sub(r'validate: "validate"',
+				"""%s {
+					%s attr, rule, ret, errors = {};
+					for (attr in attributes) {
+						if (attributes.hasOwnProperty(attr)) {
+							rule = this.rules[attr];
+							if (rule) {
+								if (rule.equals === null && rule.equals === void(0)) {
+									rule.equals = this.choices && this.choices[attr];
+								}
+								ret = %s(attributes[attr], rule);
+								if (ret !== true) {
+									errors[attr] = ret;
+								}
+							}
+						}
+					}
+					// Custom validation can also add to the errors object
+					if (this.extendedValidate) {
+						this.extendedValidate(errors);
+					}
+					if (Object.keys(errors).length) {
+						return errors;
+					}
+				}""" % (self.get_proto_func('validate', 'attributes'), self.local, self.validation_method), model_js)
+
+			# Add on any computed api properties
+			computed = []
+			if model_properties:
+				if self.cord:
+					computed.append('computed: {')
+					for i, prop_name in enumerate(model_properties):
+						comma = '' if i == len(model_properties) - 1 else ','
+						computed.extend((
+							'%s: %s {' % (prop_name, self.get_anon_func(', '.join(self.model_properties_args[name][prop_name]))),
+								'return %s;' % model_properties[prop_name],
+							'}%s' % comma
+						))
+					computed.append('}')
+					model_js = re.sub(r'computed: "computed"', '\n'.join(computed), model_js)
+					computed = None
+				else:
+					computed.extend(('Object.defineProperties(models.%s.prototype, {' % name))
+					for i, prop_name in enumerate(model_properties):
+						comma = '' if i == len(model_properties) - 1 else ','
+						computed.extend((
+							'%s: {' % prop_name,
+								'get: %s {' % self.get_anon_func(),
+									'return %s;' % model_properties[prop_name],
+								'}',
+							'}%s' % comma
+						))
+					computed.extend(('});', ''))
+
+			get_related = []
+			if related_collections:
+				self.emit('Object.defineProperties(models.%s.prototype, {' % name)
+				for i, related in enumerate(related_collections):
+					comma = '' if i == len(related_collections) - 1 else ','
+					get_related.extend((
+						'%s {' % self.get_proto_func('get%sCollection' % related['collection']),
+							'return Backbone.Collection.extend({'))
+					get_related.extend(('model: %s,' % self.get_model_unreplacement(related['model'])).split('\n'))
+					get_related.extend(('url: "%s"' % related['url'],
+							'});',
+						'}' + comma
+					))
+				model_js = re.sub(r'related: "related"', '\n'.join(get_related), model_js)
+
+			self.emit(*('%s %s = Backbone.Model.extend(%s);\n' % (self.const, name, model_js)).split('\n'))
+
+			# Non-cord computed properties
+			if computed:
+				self.emit(*model_properties)
+
+			# If this model also has a singleton instance add a function to get it
+			if self.singletons.has_key(name):
+				model_js = self.emit(
+					'%s sharedInstance;' % self.local,
+						'%s.prototype.getShared%s: %s {' % (name, name, self.get_anon_func()),
+						'if(!sharedInstance) {',
+							'sharedInstance = new %s();' % name,
+							'sharedInstance.url = "%s";' % self.singletons[name],
+						'}',
+						'return sharedInstance;',
+					'}', '')
+
+			self.print_module_footer(f, name)
+
+	def output_collection(self, name, collection):
+		path = os.path.join(self.dest_collections, '%s.js' % name)
+		with open(path, 'w') as f:
+			self.emit = CodeEmitter(f, self.indent)
+
+			collection_js = unjson(json.dumps(collection, separators=separators, indent=4))
+			# Convert the special model###modelName code into a models.Class or a function for a heterogeneous collection
+			dependencies = ['models/' + model for model in re.findall(r'"model###(.*)"', collection_js)[0].split('|')]
+			collection_js = re.sub(r'"model###(.*)"', self.get_model_unreplacement, collection_js)
+			name = name + 'Collection'
+			self.print_module_header(f, dependencies)
+			self.emit(*('%s %s = Backbone.Collection.extend(%s);\n' % (self.const, name, collection_js)).split('\n'))
+			self.print_module_footer(f, name)
+
 	def handle(self, *args, **options):
+		self.dest = os.path.abspath(options['dest'])
 		self.defaults = options['defaults']
 		self.choices = options['choices']
 		self.descriptions = options['descriptions']
 		self.titles = options['titles']
+		self.formats = options['formats']
 		self.cord = options['cord']
 		self.es6 = options['es6']
 		self.module_type = options['module_type']
@@ -368,7 +592,8 @@ class Command(BaseCommand):
 		else:
 			self.const = 'var'
 			self.local = 'var'
-		self.emit = CodeEmitter(sys.stdout, options['indent'])
+		self.indent = options['indent']
+		self.emit = CodeEmitter(sys.stdout, self.indent)
 		self.regex_stack = []
 		self.models = {}
 		self.model_properties = {}
@@ -379,166 +604,32 @@ class Command(BaseCommand):
 		self.include_related = {}
 		self.camelcase = getattr(settings, 'API_CAMELCASE', True)
 		self.renameid = getattr(settings, 'API_RENAME_ID', True)
+
 		module = import_module(settings.ROOT_URLCONF)
 		self.enum_patterns(module.urlpatterns)
-
-		def unjson(jsn):
-			# Convert spaces to tabs and json keys to unquoted javascript attributes
-			return re.sub(r'"([a-zA-Z][^"]*)":', r'\1:', jsn)
-
-		separators = (',', ': ')
-
-		self.print_module_header()
-
 		# Add newUrl attributes to the models so they can be created outside of collections.
 		# Matching models and collections will share the same name
 		for name in self.models:
 			if self.models[name].has_key('urlRoot') and self.collections.has_key(name):
 				self.models[name]['newUrl'] = self.collections[name]['url']
 
-		# Output the code
-		model_js = unjson(json.dumps(self.models, separators=separators, indent=True, sort_keys=True))
-		# Convert all urlRoot attributes into functions.
-		# The collection's url should be overridden when the object already exists with an id (!isNew) because it may be part of a heterogeneous subclass collection or related collection that does not have an endpoint for updating the object
-		# A newUrl is also defined/undefined when the model is created outside of a collection it can still use its collection's url for creating a new instance
-		model_js = re.sub(r'urlRoot: "([^"]*)"',
-			r"""urlRoot: %s {
-				if (!this.isNew()) {
-					return "\1";
-				} else if (!this.collection) {
-					return this.newUrl;
-				}
-			}""" % self.get_anon_func(), model_js)
-		# Convert all parse attributes into a function
-		model_js = re.sub(r'parse: "([^"]*)"',
-			r"""parse: %s {
-				if (response) {
-					_.each([\1], %s {
-						if (response[attribute]) {
-							response[attribute] = new Date(response[attribute]);
-						}
-					});
-				}
-				if (this._parse) {
-					response = this._parse(response);
-				}
-				return response;
-			}""" % (self.get_anon_func('response'), self.get_anon_func('attribute')), model_js)
-		model_js = re.sub(r'validate: "(validate)"',
-			"""validate: %s {
-				%s name, rule, expanded, ret, errors = [];
-				for (name in attributes) {
-					if (attributes.hasOwnProperty(name)) {
-						rule = this.rules[name];
-						ret = %s(attributes[name], expanded = {
-							type: rule[0],
-							equals: rule[1] || (this.choices && this.choices[name]),
-							min: rule[2],
-							max: rule[3],
-							format: rule[4],
-							required: rule[5]
-						});
-						if (ret !== true) {
-							errors.push({error: ret, rule: expanded, attr: name});
-						}
-					}
-					if (this._validate) {
-						this._validate(errors);
-					}
-					if (errors.length) {
-						return errors;
-					}
-				}
-			}
-			""" % (self.get_anon_func('attributes'), self.local, self.validation_method), model_js)
+		try:
+			os.makedirs(self.dest)
+		except:
+			print 'Warning: Overwriting any contents in ' + self.dest
 
-		self.emit(*('%s models = %s;\n' % (self.const, model_js)).split('\n'))
-		if options['models-code']:
-			with open(options['models-code'], 'r') as f:
-				self.emit(*f.read().split('\n'))
-		self.emit(
-			'_.each(models, %s {' % self.get_anon_func('value, key'),
-				'models[key] = Backbone.Model.extend(value);',
-			'});',
-			''
-		)
-		for name in self.related_collections:
-			self.emit('Object.defineProperties(models.%s.prototype, {' % name)
-			for i, related in enumerate(self.related_collections[name]):
-				comma = ',' if i < (len(self.related_collections[name]) - 1) else ''
-				self.emit(
-					'%sCollection: {' % related['collection'],
-						'get: function() {',
-							'return Backbone.Collection.extend({')
-				self.emit(		*('model: %s,' % self.get_model_unreplacement(related['model'])).split('\n'))
-				self.emit(		'url: "%s"' % related['url'],
-							'});',
-						'}',
-					'}%s' % comma
-				)
-			self.emit('});', '')
-		collections_js = unjson(json.dumps(self.collections, separators=separators, indent=4))
-		# Convert the special model###modelName code into a models.Class or a function for a heterogeneous collection
-		collections_js = re.sub(r'"model###(.*)"', self.get_model_unreplacement, collections_js)
-		self.emit(*('%s collections = %s;\n' % (self.const, collections_js)).split('\n'))
-		if options['collections-code']:
-			with open(options['collections-code'], 'r') as f:
-				self.emit(*f.read().split('\n'))
-		self.emit(
-			'_.each(collections, %s {' % self.get_anon_func('value, key'),
-				'collections[key] = Backbone.Collection.extend(value);',
-			'});',
-			''
-		)
+		self.dest_models = os.path.join(self.dest, 'models')
+		self.dest_collections = os.path.join(self.dest, 'collections')
+		try:
+			os.mkdir(self.dest_models)
+		except:
+			pass
+		try:
+			os.mkdir(self.dest_collections)
+		except:
+			pass
 
-		if self.cord:
-			# Add related models and any api properties
-			for name in self.model_properties:
-				self.emit('models.%s.prototype.computed = {' % name)
-				for i, prop_name in enumerate(self.model_properties[name]):
-					comma = '' if i == len(self.model_properties[name]) - 1 else ','
-					self.emit(
-						'%s: %s {' % (prop_name, self.get_anon_func(', '.join(self.model_properties_args[name][prop_name]))),
-							'return %s;' % self.model_properties[name][prop_name],
-						'}%s' % comma
-					)
-				self.emit('};', '')
-		else:
-			# Add properties to get related nested models
-			if self.include_related:
-				for name in self.include_related:
-					self.emit('Object.defineProperties(models.%s.prototype, {' % name)
-					for i, field_name in enumerate(self.include_related[name]):
-						comma = '' if i == len(self.include_related[name]) - 1 else ','
-						self.emit(
-							'%s: {' % field_name,
-								'get: %s {' % self.get_anon_func(),
-									'return this.attributes.%s && new models.%s(this.attributes.%s);' % (field_name, self.include_related[name][field_name], field_name),
-								'}',
-							'}%s' % comma
-						)
-					self.emit('});', '')
-			# Add on any api properties
-			for name in self.model_properties:
-				self.emit('Object.defineProperties(models.%s.prototype, {' % name)
-				for i, prop_name in enumerate(self.model_properties[name]):
-					comma = '' if i == len(self.model_properties[name]) - 1 else ','
-					self.emit(
-						'%s: {' % prop_name,
-							'get: %s {' % self.get_anon_func(),
-								'return %s;' % self.model_properties[name][prop_name],
-							'}',
-						'}%s' % comma
-					)
-				self.emit('});', '')
-		# Singleton objects
-		if self.singletons:
-			self.emit('%s singletons = {' % self.const)
-			for i, name in enumerate(self.singletons):
-				comma = ',' if i < (len(self.singletons) - 1) else ''
-				self.emit('%s: models.%s.extend({ url: "%s" })%s' % (name, name, self.singletons[name], comma))
-			self.emit('};')
-		else:
-			self.emit('%s singletons = {};' % self.const)
-		self.emit('')
-		self.print_module_footer()
+		for name in self.models:
+			self.output_model(name, self.models[name])
+		for name in self.collections:
+			self.output_collection(name, self.collections[name])
