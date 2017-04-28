@@ -417,17 +417,22 @@ class Command(BaseCommand):
 	def output_model(self, name, model):
 		path = os.path.join(self.dest_models, '%s.js' % name)
 
+		dependencies = []
 		include_related = self.include_related.get(name)
+		if include_related:
+			dependencies += ['models/%s' % ir for ir in include_related.values()]
 		model_properties = self.model_properties.get(name)
 		if model_properties and self.cord:
 			model['computed'] = 'computed'
 		related_collections = self.related_collections.get(name)
 		if related_collections:
 			model['related'] = 'related'
+			dependencies += ['./%s' % r['model'] for r in related_collections]
+			dependencies += ['../collections/%s' % r['collection'] for r in related_collections]
 
 		with open(path, 'w') as f:
 			self.emit = CodeEmitter(f, self.indent)
-			self.print_module_header(f)
+			self.print_module_header(f, dependencies)
 			model_js = unjson(json.dumps(model, separators=separators, indent=True, sort_keys=True))
 
 			# Convert all urlRoot attributes into functions.
@@ -508,7 +513,7 @@ class Command(BaseCommand):
 					model_js = re.sub(r'computed: "computed"', '\n'.join(computed), model_js)
 					computed = None
 				else:
-					computed.extend(('Object.defineProperties(models.%s.prototype, {' % name))
+					computed.extend(('Object.defineProperties(%s.prototype, {' % name))
 					for i, prop_name in enumerate(model_properties):
 						comma = '' if i == len(model_properties) - 1 else ','
 						computed.extend((
@@ -522,7 +527,7 @@ class Command(BaseCommand):
 
 			get_related = []
 			if related_collections:
-				self.emit('Object.defineProperties(models.%s.prototype, {' % name)
+				self.emit('Object.defineProperties(%s.prototype, {' % name)
 				for i, related in enumerate(related_collections):
 					comma = '' if i == len(related_collections) - 1 else ','
 					get_related.extend((
@@ -562,7 +567,7 @@ class Command(BaseCommand):
 
 			collection_js = unjson(json.dumps(collection, separators=separators, indent=4))
 			# Convert the special model###modelName code into a models.Class or a function for a heterogeneous collection
-			dependencies = ['models/' + model for model in re.findall(r'"model###(.*)"', collection_js)[0].split('|')]
+			dependencies = ['../models/' + model for model in re.findall(r'"model###(.*)"', collection_js)[0].split('|')]
 			collection_js = re.sub(r'"model###(.*)"', self.get_model_unreplacement, collection_js)
 			name = name + 'Collection'
 			self.print_module_header(f, dependencies)
