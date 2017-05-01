@@ -15,7 +15,7 @@ from django.utils.encoding import force_unicode
 import symmetric.management.overrides
 from symmetric.functions import camel_case_to_underscore, underscore_to_camel_case
 from symmetric.management.codeemitter import CodeEmitter
-from symmetric.management.functions import get_base_classes, get_resource_type, get_subclass_filter, format_regex_stack, is_readonly
+from symmetric.management.functions import get_base_classes, get_resource_type, get_subclass_filter, format_regex_stack, is_readonly, is_excluded, is_included
 from symmetric.management.functions import get_model_name, get_model_name_plural, get_collection_name, get_collection_name_plural
 from symmetric.management.rules import ApiFieldRule
 from symmetric.management.translate import translate_code
@@ -121,6 +121,8 @@ class Command(BaseCommand):
 	def add_choices(self, model):
 		choices = {}
 		for field in model._meta.fields:
+			if is_excluded(model, field.name):
+				continue
 			if hasattr(field, 'choices') and field.choices:
 				field_choices = {}
 				for choice in field.choices:
@@ -135,7 +137,7 @@ class Command(BaseCommand):
 	def add_defaults(self, model):
 		name = get_model_name(model)
 		for field in model._meta.fields:
-			if is_readonly(model, field.name):
+			if is_excluded(model, field.name) or is_readonly(model, field.name):
 				continue
 			default = field.default
 			if isinstance(default, type):
@@ -151,6 +153,8 @@ class Command(BaseCommand):
 	def add_descriptions(self, model):
 		subtitles = {}
 		for field in model._meta.fields:
+			if is_excluded(model, field.name):
+				continue
 			if hasattr(field, 'help_text') and field.help_text:
 				key = field.name
 				if self.camelcase:
@@ -162,6 +166,8 @@ class Command(BaseCommand):
 	def add_titles(self, model):
 		titles = {}
 		for field in model._meta.fields:
+			if is_excluded(model, field.name):
+				continue
 			key = field.name
 			if self.camelcase:
 				key = underscore_to_camel_case(key)
@@ -169,14 +175,22 @@ class Command(BaseCommand):
 		if titles:
 			self.models[get_model_name(model)]['titles'] = titles
 
-	def add_formats(self, model):
+	def add_instructions(self, model):
 		instructions = {}
 		for field in model._meta.fields:
+			if is_excluded(model, field.name):
+				continue
 			key = field.name
 			if self.camelcase:
 				key = underscore_to_camel_case(key)
 			message = force_unicode(field.error_messages.get('invalid', field.error_messages.get('invalid_choice', '')))
-			if message:
+			default_invalid = default_invalid_choice = None
+			for cls in reversed([field.__class__] + get_base_classes(field.__class__)):
+				if not hasattr(cls, 'default_error_messages'):
+					continue
+				default_invalid = cls.default_error_messages.get('invalid', default_invalid)
+				default_invalid_choice = cls.default_error_messages.get('invalid_choice', default_invalid_choice)
+			if message and message != default_invalid and message != default_invalid_choice:
 				instructions[key] = message
 		if instructions:
 			self.models[get_model_name(model)]['instructions'] = instructions
@@ -184,6 +198,8 @@ class Command(BaseCommand):
 	def add_validation(self, model):
 		rules = {}
 		for field in model._meta.fields:
+			if is_excluded(model, field.name) or is_readonly(model, field.name):
+				continue
 			key = field.name
 			if self.camelcase:
 				key = underscore_to_camel_case(key)
@@ -196,6 +212,8 @@ class Command(BaseCommand):
 	def add_parse(self, model):
 		fields = []
 		for field in model._meta.fields:
+			if is_excluded(model, field.name):
+				continue
 			# Parse DateField and DateTimeFields, but not TimeFields
 			if isinstance(field, DateField):
 				if self.camelcase:
@@ -255,6 +273,25 @@ class Command(BaseCommand):
 		if related_models:
 			self.include_related[name] = related_models
 
+	def get_readonly_fields(self, model):
+		fields = []
+		included_fields = []
+		name = get_model_name(model)
+		for field in model._meta.fields:
+			if is_excluded(model, field.name):
+				continue
+			if is_readonly(model, field.name):
+				key = field.name
+				if self.camelcase:
+					key = underscore_to_camel_case(key)
+				if is_included(model, field.name):
+					included_fields.append(key)
+				fields.append(key)
+		if field:
+			self.readonly_fields[name] = fields
+		if included_fields:
+			self.readonly_included_fields[name] = included_fields
+
 	def add_model(self, model, extra):
 		# Add the model for any resource type
 		name = get_model_name(model)
@@ -272,13 +309,14 @@ class Command(BaseCommand):
 			if self.descriptions:
 				self.add_descriptions(model)
 			if self.formats:
-				self.add_formats(model)
+				self.add_instructions(model)
 			if  self.titles:
 				self.add_titles(model)
 			if self.validation:
 				self.add_validation(model)
 			self.translate_properties(model)
 			self.get_include_related(model)
+			self.get_readonly_fields(model)
 		self.models[name].update(extra)
 
 	def get_model_replacement(self, view):
@@ -429,6 +467,10 @@ class Command(BaseCommand):
 			model['related'] = 'related'
 			dependencies += ['./%s' % r['model'] for r in related_collections]
 			dependencies += ['../collections/%s' % r['collection'] for r in related_collections]
+		readonly_fields = self.readonly_fields.get(name, [])
+		readonly_included_fields = self.readonly_included_fields.get(name, [])
+		if readonly_fields:
+			model['toJSON'] = 'toJSON'
 
 		with open(path, 'w') as f:
 			self.emit = CodeEmitter(f, self.indent)
@@ -469,6 +511,19 @@ class Command(BaseCommand):
 					}
 					return response;
 				}""" % (self.get_proto_func('parse', 'response'), self.get_anon_func('attr'), parse_related), model_js)
+
+			# Add to the toJSON function to exclude readonly fields
+			readonly_fields = '\n'.join(['delete data.%s;' % ro for ro in readonly_fields])
+			id_suffix = 'Id' if self.camelcase else '_id'
+			readonly_included_fields = '\n'.join(["data.%s%s = this.get('%s').id;" % (included, id_suffix, included) for included in readonly_included_fields])
+			if readonly_included_fields:
+				readonly_included_fields = '\n' + readonly_included_fields
+			model_js = re.sub(r'toJSON: "toJSON"',
+				"""%s {
+					%s data = Backbone.Model.prototype.toJSON.call(this);
+					%s%s
+					return data;
+				}""" % (self.get_proto_func('toJSON'), self.const, readonly_fields, readonly_included_fields), model_js)
 
 			# Convert all validate entries to functions
 			model_js = re.sub(r'validate: "validate"',
@@ -607,6 +662,8 @@ class Command(BaseCommand):
 		self.related_collections = {}
 		self.singletons = {}
 		self.include_related = {}
+		self.readonly_fields = {}
+		self.readonly_included_fields = {}
 		self.camelcase = getattr(settings, 'API_CAMELCASE', True)
 		self.renameid = getattr(settings, 'API_RENAME_ID', True)
 

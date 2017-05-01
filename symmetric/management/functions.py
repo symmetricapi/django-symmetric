@@ -173,6 +173,31 @@ def is_readonly(model, field_name):
 			return encoded_name not in api_model.encoded_fields
 	return True
 
+def is_excluded(model, field_name, flat=True):
+	# Skip any ptr field to base models
+	if field_name.endswith('_ptr_id'):
+		return True
+	# Skip any field that is not directly on model and is not the primary id field (which could be on the base too)
+	if not flat:
+		field = get_field(model, field_name)
+		if field.model is not model and not field.primary_key:
+			return True
+	# Skip anything that is not an api field
+	from symmetric.functions import _ApiModel
+	api_model = _ApiModel(model)
+	found = False
+	for decoded_name, encoded_name, encode, decode in api_model.fields:
+		if field_name == decoded_name:
+			found = True
+			break
+	return not found
+
+def is_included(model, field_name):
+	from django.db.models.fields.related import ForeignKey
+	include_related = hasattr(model, 'API') and hasattr(model.API, 'include_related') and field_name in model.API.include_related
+	field = get_field(model, field_name)
+	return (isinstance(field, ForeignKey) and include_related)
+
 def format_regex_stack(regex_stack):
 	"""Format a list or tuple of regex url patterns into a single path."""
 	import re
