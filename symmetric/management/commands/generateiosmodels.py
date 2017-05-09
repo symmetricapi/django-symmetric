@@ -4,15 +4,15 @@ from optparse import make_option
 from django.core.management.base import BaseCommand
 from django.template import Template
 
-from api.management.generatemodels import GenerateModelsCommand
-from api.management.translate import data_to_objc
+from symmetric.management.generatemodels import GenerateModelsCommand
+from symmetric.management.translate import data_to_objc
 
 included_field_setter = """{% if included %}- (void)set{{ name|title }}:({{ included_name }} *)new{{ name|title }}
 {
 	if([new{{ name|title }} isKindOfClass:[NSDictionary class]])
 	{
 		NSDictionary *dictionary = (NSDictionary *)new{{ name|title }};
-		new{{ name|title }} = [[[{{ included_name }} alloc] init] autorelease];
+		new{{ name|title }} = [[[{{ prefix }}{{ included_name }} alloc] init] autorelease];
 		[new{{ name|title }} setValuesForKeysWithDictionary:dictionary];
 	}
 	if(_{{ name }} != new{{ name|title }})
@@ -40,7 +40,7 @@ class Command(BaseCommand, GenerateModelsCommand):
 
 		# Create the mappings
 		import_mapping = {
-			'ForeignKey': Template('{% if included %}#import "{{included_name}}.h"{% endif %}'),
+			'ForeignKey': Template('{% if included %}#import "{{prefix}}{{included_name}}.h"{% endif %}'),
 			'Field': ''
 		}
 		property_base = "@property (nonatomic, %s{%% if name == 'hash' or name == 'description' %%}, getter=get{{name|title}}{%% endif %%}) %s{{name}};"
@@ -54,7 +54,7 @@ class Command(BaseCommand, GenerateModelsCommand):
 			'FloatField': Template(property_base % ('assign', 'float ')),
 			'BooleanField': Template(property_base % ('assign', 'BOOL ')),
 			'AutoField': Template(property_base % ('assign', 'uint32_t ')),
-			'ForeignKey': Template('@property (nonatomic, {% if included %}retain{% else %}assign{% endif %}) {% if included %}{{included_name}} *{% else %}uint32_t {% endif %}{{name}};'),
+			'ForeignKey': Template('@property (nonatomic, {% if included %}retain{% else %}assign{% endif %}) {% if included %}{{prefix}}{{included_name}} *{% else %}uint32_t {% endif %}{{name}};'),
 			'JSONField': Template(property_base % ('retain', 'NSMutableDictionary *')),
 			'ArrayField': Template(property_base % ('retain', 'NSMutableArray *')),
 			'Field': '#error "Unsupported field for {name}"'
@@ -110,11 +110,11 @@ class Command(BaseCommand, GenerateModelsCommand):
 			'ArrayField': Template(decode_mutable_base % ('self.', 'Object')),
 			'Field': ''
 		}
-		url_encoded_data_string = 'if(_{{name}})\n\t[args addObject:[NSString stringWithFormat:@"{{name}}=%@", [_{{name}} stringByEscapingForURLQuery]]];{% if null %}\nelse\n\t[args addObject:@"{{name}}=NULL"];{% endif %}'
-		url_encoded_data_date = 'if(_{{name}})\n\t[args addObject:[NSString stringWithFormat:@"{{name}}=%@", [[[API dateFormatter] stringFromDate:_{{name}}] stringByEscapingForURLQuery]]];{% if null %}\nelse\n\t[args addObject:@"{{name}}=NULL"];{% endif %}'
+		url_encoded_data_string = 'if(_{{name}})\n\t[args addObject:[NSString stringWithFormat:@"{{name}}=%@", [_{{name}} stringByAddingPercentEncodingWithAllowedCharacters:NSCharacterSet.URLQueryAllowedCharacterSet]]];{% if null %}\nelse\n\t[args addObject:@"{{name}}=NULL"];{% endif %}'
+		url_encoded_data_date = 'if(_{{name}})\n\t[args addObject:[NSString stringWithFormat:@"{{name}}=%@", [[[API dateFormatter] stringFromDate:_{{name}}] stringByAddingPercentEncodingWithAllowedCharacters:NSCharacterSet.URLQueryAllowedCharacterSet]]];{% if null %}\nelse\n\t[args addObject:@"{{name}}=NULL"];{% endif %}'
 		url_encoded_data_number = '[args addObject:[NSString stringWithFormat:@"{{name}}=%s", _{{name}}]];'
-		url_encoded_data_json = 'if(_{{name}})\n\t[args addObject:[NSString stringWithFormat:@"{{name}}=%@", [[NSString stringWithJSONObject:_{{name}}] stringByEscapingForURLQuery]]];{% if null %}\nelse\n\t[args addObject:@"{{name}}=NULL"];{% endif %}'
-		url_encoded_data_json_included =  '[args addObject:@"{{name}}=%@", [[NSString stringWithJSONObject:_{{name}}] stringByEscapingForURLQuery]];'
+		url_encoded_data_json = 'if(_{{name}})\n\t[args addObject:[NSString stringWithFormat:@"{{name}}=%@", [[NSString stringWithJSONObject:_{{name}}] stringByAddingPercentEncodingWithAllowedCharacters:NSCharacterSet.URLQueryAllowedCharacterSet]]];{% if null %}\nelse\n\t[args addObject:@"{{name}}=NULL"];{% endif %}'
+		url_encoded_data_json_included =  '[args addObject:@"{{name}}=%@", [[NSString stringWithJSONObject:_{{name}}] stringByAddingPercentEncodingWithAllowedCharacters:NSCharacterSet.URLQueryAllowedCharacterSet]];'
 		url_encoded_data_null = '[args addObject:@"{{name}}=NULL"];'
 		url_encoded_data_mapping = {
 			'CharField': Template(url_encoded_data_string),

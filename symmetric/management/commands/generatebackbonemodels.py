@@ -40,8 +40,8 @@ class BackboneAttributeTransformer(ast.NodeTransformer):
 		return node
 
 def unjson(jsn):
-			# Convert spaces to tabs and json keys to unquoted javascript attributes
-			return re.sub(r'"([a-zA-Z][^"]*)":', r'\1:', jsn)
+	# Convert spaces to tabs and json keys to unquoted javascript attributes
+	return re.sub(r'"([a-zA-Z0-9][^"]*)":', r'\1:', jsn)
 
 separators = (',', ': ')
 
@@ -582,7 +582,7 @@ class Command(BaseCommand):
 
 			get_related = []
 			if related_collections:
-				self.emit('Object.defineProperties(%s.prototype, {' % name)
+				get_related.append('Object.defineProperties(%s.prototype, {' % name)
 				for i, related in enumerate(related_collections):
 					comma = '' if i == len(related_collections) - 1 else ','
 					get_related.extend((

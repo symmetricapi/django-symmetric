@@ -1,12 +1,11 @@
 //
-//  {{ name }}.m
+//  {{ prefix }}{{ name }}.m
 //
 
-#import "{{ name }}.h"
+#import "{{ prefix }}{{ name }}.h"
 #import "API.h"
-#import "NSString+API.h"
 
-@implementation {{ name }}
+@implementation {{ prefix }}{{ name }}
 {% if synthesizers %}{% for synthesize in synthesizers %}
 {{ synthesize }}{% endfor %}
 {% endif %}{% if default_values %}
@@ -22,7 +21,7 @@
 {% endif %}
 + (instancetype){{ name_lower }}
 {
-	return [[[{{ name }} alloc] init] autorelease];
+	return [[[{{ prefix }}{{ name }} alloc] init] autorelease];
 }
 
 - (id)initWithXMLData:(NSData *)data
@@ -50,6 +49,12 @@
 	[super dealloc];
 }
 
+// Do not allow the default behavior of throwing NSUndefinedKeyException
+- (void)setValue:(id)value forUndefinedKey:(NSString *)key
+{
+	return;
+}
+
 // Set the default nil value for nullable-primitive fields to be 0, specifically non-included ForeignKeys
 // Otherwise the default implementation will raise an exception when loading a null value for a ForeignKey
 - (void)setNilValueForKey:(NSString *)key
@@ -69,15 +74,15 @@
 
 - (BOOL)isEqual:(id)other
 {
-	{{ name }} *theOther;
+	{{ prefix }}{{ name }} *theOther;
 
 	if(other == self)
 		return YES;
 
-	if(![other isKindOfClass:[{{ name }} class]])
+	if(![other isKindOfClass:[{{ prefix }}{{ name }} class]])
 		return NO;
 
-	theOther = ({{ name }} *)other;
+	theOther = ({{ prefix }}{{ name }} *)other;
 	return _{{ primary_field }} == theOther->_{{ primary_field }};
 }
 {% endif %}{% if property_implementations %}{% for property_impl in property_implementations %}

@@ -1,13 +1,13 @@
 //
-//  {{ name }}.h
+//  {{ prefix }}{{ name }}.h
 //
 
 #import <Foundation/Foundation.h>{% for import in imports %}
 {{ import }}{% endfor %}
 {% if base_name %}
-#import "{{ base_name }}.h"
+#import "{{ prefix }}{{ base_name }}.h"
 {% endif %}
-@interface {{ name }} : {% if base_name %}{{ base_name }}{% else %}NSObject{% endif %} <NSCoding>
+@interface {{ prefix }}{{ name }} : {% if base_name %}{{ prefix }}{{ base_name }}{% else %}NSObject{% endif %} <NSCoding>
 
 @property (nonatomic, assign) uint32_t objectId;{% for property_decl in properties %}
 {{ property_decl }}{% endfor %}{% if property_declarations %}

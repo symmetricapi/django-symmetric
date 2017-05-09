@@ -20,6 +20,11 @@ get_model = apps.get_model
 
 class GenerateModelsCommand(object):
 	option_list = (
+			make_option('--prefix',
+				type='string',
+				dest='prefix',
+				default='',
+				help='Prefix to add to each class name and file name.'),
 			make_option('--dest',
 				type='string',
 				dest='dest',
@@ -67,7 +72,7 @@ class GenerateModelsCommand(object):
 				has_bool = True
 			if not primary_field and field.primary_key:
 				primary_field = encoded_name
-		return {'base_name': base_name, 'name': model.__name__, 'name_lower': model.__name__[0].lower() + model.__name__[1:], 'has_date': has_date, 'has_bool': has_bool, 'primary_field': primary_field, 'datetime_fields': datetime_fields}
+		return {'prefix': self.prefix, 'base_name': base_name, 'name': model.__name__, 'name_lower': model.__name__[0].lower() + model.__name__[1:], 'has_date': has_date, 'has_bool': has_bool, 'primary_field': primary_field, 'datetime_fields': datetime_fields}
 
 	def perform_mapping(self, mapping, format_context):
 		if callable(mapping):
@@ -185,6 +190,7 @@ class GenerateModelsCommand(object):
 
 	def render(self, *args, **options):
 		self.camelcase = getattr(settings, 'API_CAMELCASE', True)
+		self.prefix = options['prefix']
 		if not hasattr(self, 'templates'):
 			raise CommandError('No templates set!')
 		if options and options['dest']:
@@ -207,7 +213,7 @@ class GenerateModelsCommand(object):
 				for i in range(len(self.templates)):
 					template = self.templates[i]
 					template_extension = self.template_extensions[i]
-					path = os.path.join(options['dest'], '%s.%s' % (model.__name__, template_extension))
+					path = os.path.join(options['dest'], '%s%s.%s' % (self.prefix, model.__name__, template_extension))
 					print 'Rendering %s' % path
 					with open(path, 'w') as f:
 						f.write(self.post_render(template.render(Context(context, autoescape=False))))

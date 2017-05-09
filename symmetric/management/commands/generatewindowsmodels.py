@@ -4,7 +4,7 @@ from optparse import make_option
 from django.core.management.base import BaseCommand
 from django.template import Template
 
-from api.management.generatemodels import GenerateModelsCommand
+from symmetric.management.generatemodels import GenerateModelsCommand
 
 class Command(BaseCommand, GenerateModelsCommand):
 	help = 'Generate Windows Phone models for API models or endpoints.'
