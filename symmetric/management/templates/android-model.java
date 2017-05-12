@@ -49,7 +49,8 @@ public class {{ name }} {% if base_name %}extends {{ base_name }} {% endif %}imp
 	/** Constructor to create a {{ name }} from a Parcel */
 	@SuppressWarnings("unchecked")
 	private {{ name }}(Parcel in)
-	{
+	{% templatetag openbrace %}{% if base_name %}
+		super(in);{% endif %}
 		try
 		{% templatetag openbrace %}{% for read_parcel_stmt in read_parcel %}
 			{{ read_parcel_stmt }}{% endfor %}
