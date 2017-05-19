@@ -1,0 +1,15 @@
+{
+	"rules": {
+		"quotes": 0,
+		"comma-dangle": ["error", "only-multiline"],
+		"padded-blocks": 0,
+		"prefer-template": 0,
+		"consistent-return": 0,
+		"no-param-reassign": 0,
+		"arrow-body-style": 0,
+		"no-unused-vars": 0,
+		"brace-style": 0,
+		"no-prototype-builtins": 0,
+		"no-nested-ternary": 0
+	}
+}

@@ -6,6 +6,7 @@ import sys
 from functools import partial
 from importlib import import_module
 from optparse import make_option
+from shutil import copyfile
 
 from django.conf import settings
 from django.core.management.base import BaseCommand
@@ -335,7 +336,7 @@ class Command(BaseCommand):
 			models = ['if (attrs.hasOwnProperty(%s.prototype.idAttribute)) {\nreturn new %s(attrs, options);\n}\n' % (model, model) for model in models if self.models.has_key(model)]
 			if len(models) < count:
 				models.append('return new Backbone.Model(attrs, options);\n')
-			return '%s {\n%s}' % (self.get_anon_func('attrs, options'), 'else '.join(models))
+			return '%s {\noptions = options || {};\noptions.parse = true;\n%s}' % (self.get_anon_func('attrs, options'), 'else '.join(models))
 		else:
 			return models[0]
 
@@ -371,7 +372,10 @@ class Command(BaseCommand):
 							if url.find('<object_id>') != -1:
 								if not self.related_collections.has_key(parent_name):
 									self.related_collections[parent_name] = []
-								self.related_collections[parent_name].append({'collection': collection_name, 'model': self.get_model_replacement(view), 'url': url.replace('<object_id>', '" + this.id + "')})
+								self.related_collections[parent_name].append({'collection': collection_name, 'url': url.replace('<object_id>', '" + this.id + "')})
+								# Generate a blank collection class for related items if needed
+								if not self.collections.has_key(collection_name):
+									self.collections[collection_name] = {'model': 'model###' + get_model_name(view.model)}
 					elif resource_type == 'Object':
 						if url.find('<object_id>') != -1:
 							# Remove the last piece of the url path, should be <object_id>, don't look for <slug> because the idAttribute above only allows the object id
@@ -390,35 +394,25 @@ class Command(BaseCommand):
 
 	def print_module_header(self, f=sys.stdout, dependencies=[]):
 		# Module definition start
+		deps = ['backbone', 'underscore'] + dependencies
+		args = ['Backbone', '_'] + [dep.split('/')[-1] + ('Collection' if dep.startswith('../collections') else '') for dep in dependencies]
 		if self.module_type == 'amd':
-			define_deps = ['backbone', 'underscore'] + dependencies
-			define_deps = ["'%s'" % dd for dd in define_deps]
-			define_deps = ', '.join(define_deps)
-			define_args = ['Backbone', '_'] + [dep.split('/')[-1] for dep in dependencies]
-			define_args = ', '.join(define_args)
-			self.emit("define([%s], %s {" % (define_deps, self.get_anon_func(define_args)))
+			deps = ["'%s'" % dd for dd in deps]
+			deps = ', '.join(deps)
+			args = ', '.join(args)
+			self.emit("define([%s], %s {" % (deps, self.get_anon_func(args)))
 		elif self.module_type != 'esm':
 			self.emit('(%s {' % self.get_anon_func())
 		if self.module_type != 'esm':
 			self.emit('"use strict";', '')
 		if self.module_type == 'cjs':
-			self.emit(
-				"%s Backbone = require('backbone');" % self.const,
-				"%s _ = require('underscore');" % self.const,
-				''
-			)
-			if dependencies:
-				self.emit(*["%s %s = require('%s');" % (self.const, dep.split('/')[-1], dep) for dep in dependencies])
-				self.emit('')
+			for i in range(len(deps)):
+				self.emit("%s %s = require('%s');" % (self.const, args[i], deps[i]))
+			self.emit('')
 		elif self.module_type == 'esm':
-			self.emit(
-				"import Backbone from 'backbone';",
-				"import _ from 'underscore';",
-				''
-			)
-			if dependencies:
-				self.emit(*["import %s from '%s';" % (dep.split('/')[-1], dep) for dep in dependencies])
-				self.emit('')
+			for i in range(len(deps)):
+				self.emit("import %s from '%s';" % (args[i], deps[i]))
+			self.emit('')
 
 	def print_module_footer(self, f=sys.stdout, name=None):
 		# Module definition end
@@ -465,7 +459,7 @@ class Command(BaseCommand):
 		related_collections = self.related_collections.get(name)
 		if related_collections:
 			model['related'] = 'related'
-			dependencies += ['./%s' % r['model'] for r in related_collections]
+			# dependencies += ['./%s' % r['model'] for r in related_collections]
 			dependencies += ['../collections/%s' % r['collection'] for r in related_collections]
 		readonly_fields = self.readonly_fields.get(name, [])
 		readonly_included_fields = self.readonly_included_fields.get(name, [])
@@ -493,7 +487,7 @@ class Command(BaseCommand):
 			parse_related = []
 			if include_related:
 				for i, field_name in enumerate(include_related):
-					parse_related.append('if (response.%s) {\nresponse.%s = new %s(response.%s);\n}' % (field_name, field_name, include_related[field_name], field_name))
+					parse_related.append('if (response.%s) {\nresponse.%s = new %s(response.%s, { parse: true });\n}' % (field_name, field_name, include_related[field_name], field_name))
 			parse_related = '\n'.join(parse_related)
 			model_js = re.sub(r'parse: "([^"]*)"',
 				r"""%s {
@@ -582,15 +576,13 @@ class Command(BaseCommand):
 
 			get_related = []
 			if related_collections:
-				get_related.append('Object.defineProperties(%s.prototype, {' % name)
 				for i, related in enumerate(related_collections):
 					comma = '' if i == len(related_collections) - 1 else ','
 					get_related.extend((
 						'%s {' % self.get_proto_func('get%sCollection' % related['collection']),
-							'return Backbone.Collection.extend({'))
-					get_related.extend(('model: %s,' % self.get_model_unreplacement(related['model'])).split('\n'))
-					get_related.extend(('url: "%s"' % related['url'],
-							'});',
+							'%s collection = new %sCollection();' % (self.const, related['collection']),
+							'collection.url = "%s";' % related['url'],
+							'return collection;',
 						'}' + comma
 					))
 				model_js = re.sub(r'related: "related"', '\n'.join(get_related), model_js)
@@ -605,13 +597,13 @@ class Command(BaseCommand):
 			if self.singletons.has_key(name):
 				model_js = self.emit(
 					'%s sharedInstance;' % self.local,
-						'%s.prototype.getShared%s: %s {' % (name, name, self.get_anon_func()),
-						'if(!sharedInstance) {',
+						'%s.prototype.getShared%s = %s {' % (name, name, self.get_anon_func()),
+						'if (!sharedInstance) {',
 							'sharedInstance = new %s();' % name,
 							'sharedInstance.url = "%s";' % self.singletons[name],
 						'}',
 						'return sharedInstance;',
-					'}', '')
+					'};', '')
 
 			self.print_module_footer(f, name)
 
@@ -672,7 +664,7 @@ class Command(BaseCommand):
 		# Add newUrl attributes to the models so they can be created outside of collections.
 		# Matching models and collections will share the same name
 		for name in self.models:
-			if self.models[name].has_key('urlRoot') and self.collections.has_key(name):
+			if self.models[name].has_key('urlRoot') and self.collections.has_key(name) and self.collections[name].has_key('url'):
 				self.models[name]['newUrl'] = self.collections[name]['url']
 
 		try:
@@ -691,7 +683,13 @@ class Command(BaseCommand):
 		except:
 			pass
 
+		# Output each model and collection
 		for name in self.models:
 			self.output_model(name, self.models[name])
 		for name in self.collections:
 			self.output_collection(name, self.collections[name])
+
+		eslint_path = os.path.join(os.path.dirname(__file__), '../templates/eslintrc')
+		# Copy .eslintrc file
+		copyfile(eslint_path, os.path.join(self.dest_models, '.eslintrc'))
+		copyfile(eslint_path, os.path.join(self.dest_collections, '.eslintrc'))
