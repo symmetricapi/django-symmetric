@@ -23,6 +23,12 @@ from symmetric.management.translate import translate_code
 from symmetric.models import get_related_model
 from symmetric.views import ApiAction, ApiRequirement, BasicApiView, api_view
 
+try:
+	from generate import backbone_callback
+except:
+	def backbone_callback(name, model, collection, **kwargs):
+		pass
+
 class BackboneAttributeTransformer(ast.NodeTransformer):
 	"""Any access to self.property_name should be converted to self.attributes.property_name if it is a field."""
 	def __init__(self, model):
@@ -104,14 +110,6 @@ class Command(BaseCommand):
 				type='string',
 				default='validate',
 				help='Validation method to call, defaults to the global validate method. If --cord is given this default will become Backbone.Cord.validate'),
-			make_option('--models-code',
-				dest='models-code',
-				type='string',
-				help='Raw code to mixin with the models code.'),
-			make_option('--collections-code',
-				dest='collections-code',
-				type='string',
-				help='Raw code to mixin with the collections code.'),
 			make_option('--indent',
 				dest='indent',
 				type='int',
@@ -251,6 +249,8 @@ class Command(BaseCommand):
 				return attr
 			for name, code in model_properties.items():
 				model_properties_args[name] = set()
+				if code.find('this.id'):
+					model_properties_args[name].add('id')
 				code = re.sub(r'this.([0-9a-zA-Z_]*)', replace_properties, code)
 				model_properties[name] = re.sub(r'this.get\("([0-9a-zA-Z_]*)"\)', partial(replace_attributes, model_properties_args[name]), code)
 		model_name = get_model_name(model)
@@ -466,6 +466,8 @@ class Command(BaseCommand):
 		if readonly_fields:
 			model['toJSON'] = 'toJSON'
 
+		backbone_callback(name, model, None)
+
 		with open(path, 'w') as f:
 			self.emit = CodeEmitter(f, self.indent)
 			self.print_module_header(f, dependencies)
@@ -553,8 +555,12 @@ class Command(BaseCommand):
 					computed.append('computed: {')
 					for i, prop_name in enumerate(model_properties):
 						comma = '' if i == len(model_properties) - 1 else ','
+						args = list(self.model_properties_args[name][prop_name])
 						computed.extend((
-							'%s: %s {' % (prop_name, self.get_anon_func(', '.join(self.model_properties_args[name][prop_name]))),
+							'%s: %s {' % (prop_name, self.get_anon_func(', '.join(args))),
+								'if (%s === "__args__") {' % args[0],
+									'return ["%s"];' % '", "'.join(args),
+								'}',
 								'return %s;' % model_properties[prop_name],
 							'}%s' % comma
 						))
@@ -597,7 +603,7 @@ class Command(BaseCommand):
 			if self.singletons.has_key(name):
 				model_js = self.emit(
 					'%s sharedInstance;' % self.local,
-						'%s.prototype.getShared%s = %s {' % (name, name, self.get_anon_func()),
+						'%s.getShared%s = %s {' % (name, name, self.get_anon_func()),
 						'if (!sharedInstance) {',
 							'sharedInstance = new %s();' % name,
 							'sharedInstance.url = "%s";' % self.singletons[name],
@@ -609,6 +615,7 @@ class Command(BaseCommand):
 
 	def output_collection(self, name, collection):
 		path = os.path.join(self.dest_collections, '%s.js' % name)
+		backbone_callback(name, None, collection)
 		with open(path, 'w') as f:
 			self.emit = CodeEmitter(f, self.indent)
 
