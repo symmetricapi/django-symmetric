@@ -197,7 +197,7 @@ class Command(BaseCommand):
 	def add_validation(self, model):
 		rules = {}
 		for field in model._meta.fields:
-			if is_excluded(model, field.name) or is_readonly(model, field.name):
+			if is_excluded(model, field.name) or is_readonly(model, field.name) or is_included(model, field.name):
 				continue
 			key = field.name
 			if self.camelcase:
@@ -395,7 +395,7 @@ class Command(BaseCommand):
 	def print_module_header(self, f=sys.stdout, dependencies=[]):
 		# Module definition start
 		deps = ['backbone', 'underscore'] + dependencies
-		args = ['Backbone', '_'] + [dep.split('/')[-1] + ('Collection' if dep.startswith('../collections') else '') for dep in dependencies]
+		args = ['Backbone', '_'] + [dep.split('/')[-1] + ('Collection' if dep.startswith('collections') else '') for dep in dependencies]
 		if self.module_type == 'amd':
 			deps = ["'%s'" % dd for dd in deps]
 			deps = ', '.join(deps)
@@ -447,7 +447,18 @@ class Command(BaseCommand):
 			self.emit('})();')
 
 	def output_model(self, name, model):
-		path = os.path.join(self.dest_models, '%s.js' % name)
+		if self.es6:
+			try:
+				os.mkdir(os.path.join(self.dest_models, name))
+			except:
+				pass
+			path = os.path.join(self.dest_models, name, 'index.js')
+			if not os.path.exists(path):
+				with open(path, 'w') as f:
+					f.write("import %s from './%s';\n\n// Put additional %s methods here\n\nexport default %s;\n" % (name, name, name, name))
+			path = os.path.join(self.dest_models, name, '%s.js' % name)
+		else:
+			path = os.path.join(self.dest_models, '%s.js' % name)
 
 		dependencies = []
 		include_related = self.include_related.get(name)
@@ -460,7 +471,7 @@ class Command(BaseCommand):
 		if related_collections:
 			model['related'] = 'related'
 			# dependencies += ['./%s' % r['model'] for r in related_collections]
-			dependencies += ['../collections/%s' % r['collection'] for r in related_collections]
+			dependencies += ['collections/%s' % r['collection'] for r in related_collections]
 		readonly_fields = self.readonly_fields.get(name, [])
 		readonly_included_fields = self.readonly_included_fields.get(name, [])
 		if readonly_fields:
@@ -614,14 +625,26 @@ class Command(BaseCommand):
 			self.print_module_footer(f, name)
 
 	def output_collection(self, name, collection):
-		path = os.path.join(self.dest_collections, '%s.js' % name)
+		if self.es6:
+			try:
+				os.mkdir(os.path.join(self.dest_collections, name))
+			except:
+				pass
+			path = os.path.join(self.dest_collections, name, 'index.js')
+			if not os.path.exists(path):
+				with open(path, 'w') as f:
+					f.write("import %s from './%s';\n\n// Put additional %s methods here\n\nexport default %s;\n" % (name, name, name, name))
+			path = os.path.join(self.dest_collections, name, '%s.js' % name)
+		else:
+			path = os.path.join(self.dest_collections, '%s.js' % name)
+
 		backbone_callback(name, None, collection)
 		with open(path, 'w') as f:
 			self.emit = CodeEmitter(f, self.indent)
 
 			collection_js = unjson(json.dumps(collection, separators=separators, indent=4))
 			# Convert the special model###modelName code into a models.Class or a function for a heterogeneous collection
-			dependencies = ['../models/' + model for model in re.findall(r'"model###(.*)"', collection_js)[0].split('|')]
+			dependencies = ['models/' + model for model in re.findall(r'"model###(.*)"', collection_js)[0].split('|')]
 			collection_js = re.sub(r'"model###(.*)"', self.get_model_unreplacement, collection_js)
 			name = name + 'Collection'
 			self.print_module_header(f, dependencies)
