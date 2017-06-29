@@ -132,7 +132,7 @@ class Command(BaseCommand, GenerateModelsCommand):
 			'WriteOnly': True
 		}
 		dict_field_mapping = {
-			'ForeignKey': Template('{% if not included %}{name}{% endif %}'),
+			'ForeignKey': Template('{% if not included %}{{name}}{% endif %}'),
 			'Field': '{name}',
 			'WriteOnly': True
 		}
