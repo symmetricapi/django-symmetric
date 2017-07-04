@@ -1,6 +1,8 @@
 import hashlib
 import hmac
 
+import requests
+
 from django.apps import apps
 from django.conf import settings
 from django.contrib.auth import authenticate, login, logout, get_user_model
@@ -530,6 +532,15 @@ def api_logout_view(request):
 	"""Logout the current user."""
 	logout(request)
 	return render_empty(request)
+
+
+def api_check_page_url(request):
+    try:
+        page = requests.head(request.GET.get('url'))
+        return JsonResponse({'canLoad': page.headers.get('X-Frame-Options') is None})
+    except:
+        return JsonResponse({'canLoad': False})
+
 
 class ApiCurrentUserView(BasicApiView):
 	single_object = True
