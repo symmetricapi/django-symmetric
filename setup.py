@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
 	name='django-symmetric',
-	version='0.0.4',
+	version='0.0.5',
 	description='RESTful Django API views to ease automation of creating symmetric client-side code.',
 	url='https://github.com/symmetricapi/django-symmetric',
 	author='mvx24',
