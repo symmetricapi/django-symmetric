@@ -291,7 +291,7 @@ def api_view(model, actions=ApiAction.READ, requirements=0, filter=None, authori
 					if request.POST.get('_data'):
 						obj._data = request.POST['_data']
 					if callable(verification) and not verification(request, obj):
-							return render_error(request, __ERROR_VERIFICATION, 500)
+						return render_error(request, __ERROR_VERIFICATION, 500)
 					save_object(obj)
 				except InsufficientRoleApiException as e:
 					return render_error(request, e.message, 401)
