@@ -108,6 +108,16 @@
 	return dictionary;
 }
 
+- (NSDictionary *)jsonDictionary
+{
+	NSMutableDictionary *dictionary = {% if base_name %}(NSMutableDictionary *)[super jsonDictionary];{% else %}[NSMutableDictionary dictionary];{% endif %}
+	[dictionary addEntriesFromDictionary:[self dictionaryWithValuesForKeys:[NSArray arrayWithObjects:{% for field in dict_fields %}@"{{ field }}", {% endfor %}nil]]];{% for include in dict_included %}
+	{{ include }}{% endfor %}{% for field, field_upper in datetime_fields %}
+	if(_{{ field }})
+		[dictionary setObject:[[API dateFormatter] stringFromDate:_{{ field }}] forKey:@"{{ field }}"];{% endfor %}
+	return dictionary;
+}
+
 - (NSData *)urlEncodedData
 {
 	NSMutableArray *args = [NSMutableArray arrayWithCapacity:32];{% if base_name %}
@@ -122,7 +132,7 @@
 	NSError *error;
 	if(NSClassFromString(@"NSJSONSerialization") == nil)
 		return nil;
-	return [NSJSONSerialization dataWithJSONObject:[self dictionary] options:0 error:&error];
+	return [NSJSONSerialization dataWithJSONObject:[self jsonDictionary] options:0 error:&error];
 }
 
 #pragma mark - NSCoding methods

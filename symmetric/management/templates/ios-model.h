@@ -20,6 +20,7 @@
 - (id)initWithJSONData:(NSData *)data;
 
 - (NSDictionary *)dictionary;
+- (NSDictionary *)jsonDictionary;
 - (NSData *)urlEncodedData;
 - (NSData *)jsonData;
 
