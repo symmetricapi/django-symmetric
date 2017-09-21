@@ -7,6 +7,7 @@ from .response import set_response_headers
 
 get_model = apps.get_model
 
+
 """
 In Django 1.9 _clone method no longer allows a different class. Instead need to subclass the ModelIterable class
 Differences described below when the queryset is iterated:
@@ -39,6 +40,7 @@ class SubclassQuerySet(QuerySet):
 			else:
 				yield obj
 
+
 def subclass_filter(*subclasses, **names):
 	"""
 	Convert the QuerySet to a SubclassQuerySet, where only the specified subclasses are returned and each object is cast to its subclass.
@@ -61,6 +63,7 @@ def subclass_filter(*subclasses, **names):
 		return queryset
 	return subclass_filter_inner
 
+
 def search_filter(request, queryset):
 	"""Filter down the result by using a q query parameter. API.search_fields MUST be set to use this."""
 	query = request.GET.get('q')
@@ -68,7 +71,7 @@ def search_filter(request, queryset):
 		params = None
 		for field in queryset.model.API.search_fields:
 			if field.find('.'):
-				field = '__'.join(field.split('.'))
+				field = field.replace('.', '__')
 			if not params:
 				params = Q(**{field + '__icontains': query})
 			else:
@@ -76,20 +79,43 @@ def search_filter(request, queryset):
 		queryset = queryset.filter(params)
 	return queryset
 
+
 def field_filter(request, queryset):
 	"""Filter the results by named fields in the query string. API.filter_fields MUST be set to use this."""
-	if len(request.GET) and hasattr(queryset.model, 'API') and hasattr(queryset.model.API, 'filter_fields'):
-		model = _get_api_model(queryset.model)
-		for field in queryset.model.API.filter_fields:
-			value = request.GET.get(field)
-			if value:
-				encoded_field = model.encoded_fields[field]
-				key = encoded_field[0]
-				decode = encoded_field[3]
-				if decode:
-					value = decode(value)
-				queryset = queryset.filter(**{key: value})
+	if len(request.GET) and hasattr(queryset.model, 'API'):
+		if hasattr(queryset.model.API, 'filter_fields'):
+			model = _get_api_model(queryset.model)
+			for field in queryset.model.API.filter_fields:
+				value = request.GET.get(field)
+				if value:
+					encoded_field = model.encoded_fields[field]
+					key = encoded_field[0]
+					decode = encoded_field[3]
+					if decode:
+						value = decode(value)
+					queryset = queryset.filter(**{key: value})
+		if hasattr(queryset.model.API, 'filters'):
+			model = _get_api_model(queryset.model)
+			for key in queryset.model.API.filters:
+				value = request.GET.get(key)
+				if value:
+					filtr = queryset.model.API.filters[key]
+					decoder = filtr.get('decoder')
+					lookup = filtr['lookup']
+					if decoder:
+						value = decoder(value)
+					if isinstance(lookup, (list, tuple)):
+						params = None
+						for l in lookup:
+							if not params:
+								params = Q(**{l: value})
+							else:
+								params = params | Q(**{l: value})
+						queryset = queryset.filter(params)
+					else:
+						queryset = queryset.filter(**{lookup: value})
 	return queryset
+
 
 def order_by_filter(request, queryset):
 	"""Order the results by using an orderby parameter."""
@@ -102,7 +128,9 @@ def order_by_filter(request, queryset):
 			queryset = queryset.order_by(order_by)
 	return queryset
 
+
 __API_PAGE_SIZE = getattr(settings, 'API_PAGE_SIZE', 100)
+
 
 def paginate_filter(request, queryset):
 	"""Paginate the results based on page and pagesize parameters. This should be the last filter applied."""
@@ -135,6 +163,7 @@ def paginate_filter(request, queryset):
 		set_response_headers(request, **{'X-Prev-Page': page - 1})
 	return queryset[start_index:end_index]
 
+
 def combine_filters(*filters):
 	"""Combine multiple filters into one."""
 	def combine_filters_inner(request, queryset):
@@ -142,6 +171,7 @@ def combine_filters(*filters):
 			queryset = filter(request, queryset)
 		return queryset
 	return combine_filters_inner
+
 
 def filter_as_authorization(model, filter):
 	"""Create an authorization function based on a collection filter."""
