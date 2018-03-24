@@ -1,7 +1,7 @@
 
 class ApiException(Exception):
-	pass
+    pass
 
 
 class InsufficientRoleApiException(ApiException):
-	pass
+    pass
