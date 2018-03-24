@@ -2,6 +2,7 @@ import StringIO
 
 from django.utils.html import escape
 
+
 def __dump_value(t, value, tag, file):
     if t == str or t == unicode:
         file.write('<%s>%s</%s>' % (tag, escape(value), tag))
@@ -9,6 +10,7 @@ def __dump_value(t, value, tag, file):
         file.write('<%s>%s</%s>' % (tag, str(value).lower(), tag))
     else:
         file.write('<%s>%s</%s>' % (tag, str(value), tag))
+
 
 def __dump_dict(dictionary, file):
     """Output a dict."""
@@ -25,6 +27,7 @@ def __dump_dict(dictionary, file):
         else:
             __dump_value(t, value, key, file)
 
+
 def __dump_array(array, file):
     """Output an array."""
     for value in array:
@@ -37,6 +40,7 @@ def __dump_array(array, file):
             file.write('</ul>')
         else:
             __dump_value(t, value, 'li', file)
+
 
 def dumps(data, file=None):
     """Similar to json.dumps, will return an html fragment string."""

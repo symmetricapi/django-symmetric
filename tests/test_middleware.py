@@ -9,11 +9,13 @@ from django.test.client import Client
 
 from symmetric.urls import api_reverse
 
+
 def api_test(request):
     if hasattr(request, 'api') and request.api:
         return HttpResponse()
     else:
         return HttpResponse(status=400)
+
 
 def api_json_test(request):
     if hasattr(request, 'api_json') and request.api_json:
@@ -21,12 +23,14 @@ def api_json_test(request):
     else:
         return HttpResponse(status=400)
 
+
 def api_version_test(request):
     version = int(request.GET.get('version', '1'))
     if hasattr(request, 'api_version') and request.api_version == version:
         return HttpResponse()
     else:
         return HttpResponse(status=400)
+
 
 class ApiTest(TestCase):
 

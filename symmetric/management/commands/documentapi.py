@@ -13,34 +13,45 @@ from symmetric.views import api_view, api_related_view, api_filter_contacts_view
 from symmetric.views import api_login_view, api_logout_view, api_create_user_view, api_set_password_view, api_reset_password_view
 from symmetric.views import ApiAction, ApiRequirement, BasicApiView
 
+
 class Command(BaseCommand):
     help = 'Generate documentation for API endpoints.'
     option_list = BaseCommand.option_list + (
-            make_option('--compact', '-c',
-                action='store_true',
-                dest='compact',
-                default=False,
-                help='Output only callback information info with the url endpoints.'),
-            make_option('--urls', '-u',
-                action='store_true',
-                dest='urls',
-                default=False,
-                help='Output only the url endpoints.'),
-            make_option('--anonymous', '-a',
-                action='store_true',
-                dest='anonymous',
-                default=False,
-                help='Output only the endpoints that may be used anonymously without a login session.'),
-            make_option('--raml', '-r',
-                action='store_true',
-                dest='raml',
-                default=False,
-                help=''),
-            make_option('--raml-mixin', '-m',
-                type='string',
-                dest='raml-mixin',
-                help='Mixin/overwrite the raml with following raml file.')
-        )
+        make_option(
+            '--compact', '-c',
+            action='store_true',
+            dest='compact',
+            default=False,
+            help='Output only callback information info with the url endpoints.',
+        ),
+        make_option(
+            '--urls', '-u',
+            action='store_true',
+            dest='urls',
+            default=False,
+            help='Output only the url endpoints.',
+        ),
+        make_option(
+            '--anonymous', '-a',
+            action='store_true',
+            dest='anonymous',
+            default=False,
+            help='Output only the endpoints that may be used anonymously without a login session.',
+        ),
+        make_option(
+            '--raml', '-r',
+            action='store_true',
+            dest='raml',
+            default=False,
+            help='',
+        ),
+        make_option(
+            '--raml-mixin', '-m',
+            type='string',
+            dest='raml-mixin',
+            help='Mixin/overwrite the raml with following raml file.',
+        ),
+    )
     API_AUTH_VIEWS = (api_login_view, api_logout_view, api_create_user_view, api_set_password_view, api_reset_password_view)
 
     def format_actions(self, view, resource_type):

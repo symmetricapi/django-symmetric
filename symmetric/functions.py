@@ -4,10 +4,12 @@ from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
+
 def underscore_to_camel_case(string):
     words = [word.capitalize() for word in string.split('_')]
     words[0] = words[0].lower()
     return ''.join(words)
+
 
 def camel_case_to_underscore(string):
     words = []
@@ -20,11 +22,13 @@ def camel_case_to_underscore(string):
     words.append(string[start_index:].lower())
     return '_'.join(words)
 
+
 def sanitize_order_by(string):
     """Make sure the string has no double underscores, also convert from camelcase."""
     if string and string.find('__') == -1 and string.find('?') == -1:
         return camel_case_to_underscore(string)
     return ''
+
 
 def iso_8601_to_time(iso):
     """Parse an iso 8601 date into a datetime.time."""
@@ -32,11 +36,13 @@ def iso_8601_to_time(iso):
         return None
     return datetime.datetime.strptime(iso, '%H:%M:%S').time()
 
+
 def iso_8601_to_date(iso):
     """Parse an iso 8601 date into a datetime.date."""
     if not iso:
         return None
     return datetime.datetime.strptime(iso[:10], '%Y-%m-%d').date()
+
 
 def iso_8601_to_datetime(iso):
     """Parse an iso 8601 string into a timezone aware datetime, ignoring and fractional seconds."""
@@ -64,12 +70,14 @@ def iso_8601_to_datetime(iso):
                 pass
         raise ValueError('Invalid timezone %s.' % iso[19:])
 
+
 def time_to_iso_8601(t):
     """Format a datetime.time as an iso 8601 string - HH:MM:SS."""
     if t:
         return t.replace(microsecond=0).isoformat()
     else:
         return None
+
 
 def date_to_iso_8601(d):
     """Format a datetime.date as an iso 8601 string - YYYY-MM-DD."""
@@ -78,12 +86,14 @@ def date_to_iso_8601(d):
     else:
         return None
 
+
 def datetime_to_iso_8601(dt):
     """Format a datetime as an iso 8601 string - YYYY-MM-DDTHH:MM:SS with optional timezone +HH:MM."""
     if dt:
         return dt.replace(microsecond=0).isoformat()
     else:
         return None
+
 
 def decode_int(value):
     """Decode an int after checking to make sure it is not already a int, 0.0, or empty."""
@@ -95,6 +105,7 @@ def decode_int(value):
         return None
     return int(value)
 
+
 def decode_float(value):
     """Decode a float after checking to make sure it is not already a float, 0, or empty."""
     if type(value) is float:
@@ -104,6 +115,7 @@ def decode_float(value):
     elif not value:
         return None
     return float(value)
+
 
 def decode_bool(value):
     """Decode a bool after checking to make sure it is not already a bool, int, or empty.
@@ -121,9 +133,12 @@ def decode_bool(value):
         return False
     return True
 
+
 _api_models = {}
 
+
 class _ApiModel(object):
+
     def __init__(self, model):
         # Tuples of (name, encoded_name, encode, decode)
         self.fields = []
@@ -271,17 +286,20 @@ class _ApiModel(object):
                 else:
                     setattr(obj, name, value)
 
+
 def _get_api_model(model):
     key = model.__module__ + model.__name__
     if not _api_models.has_key(key):
         _api_models[key] = _ApiModel(model)
     return _api_models[key]
 
+
 def get_object_list_data(obj):
     if obj is None:
         return None
     model = _get_api_model(type(obj))
     return model.get_list_data(obj)
+
 
 def get_object_data(obj):
     if obj is None:
@@ -295,9 +313,11 @@ def get_object_data(obj):
             del data[excluded]
     return data
 
+
 def set_object_data(obj, data):
     model = _get_api_model(type(obj))
     model.set_data(obj, data)
+
 
 def save_object(obj):
     model = type(obj)

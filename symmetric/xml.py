@@ -4,10 +4,12 @@ from django.db.models import Model
 from django.db.models.query import QuerySet
 from django.utils.html import escape
 
+
 def __get_array_tag(array, tag='values'):
     if isinstance(array, QuerySet):
         return array.model._meta.verbose_name_plural.replace(' ', '').lower()
     return tag
+
 
 def __dump_value(t, value, tag, file, default=None):
     if issubclass(t, (str, unicode)):
@@ -39,6 +41,7 @@ def __dump_value(t, value, tag, file, default=None):
         else:
             raise TypeError(repr(obj) + " is not serializable")
 
+
 def __dump_dict(dictionary, file, default=None):
     """Output a dict."""
     for key, value in dictionary.items():
@@ -53,6 +56,7 @@ def __dump_dict(dictionary, file, default=None):
             file.write('</%s>' % key)
         else:
             __dump_value(t, value, key, file, default)
+
 
 def __dump_array(array, file, default=None):
     """Output an array."""
@@ -69,6 +73,7 @@ def __dump_array(array, file, default=None):
             file.write('</%s>' % tag)
         else:
             __dump_value(t, value, 'value', file, default)
+
 
 def dumps(data, file=None, default=None):
     """Similar to json.dumps, will return an xml string."""

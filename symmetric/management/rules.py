@@ -17,8 +17,9 @@ _TYPE_MAP = {
     'JSONField': 'object',
     'ArrayField': 'array',
     'IPAddressField': 'string',
-    'GenericIPAddressField': 'string'
+    'GenericIPAddressField': 'string',
 }
+
 
 _FORMAT_MAP = {
     'URLField': 'url',
@@ -27,8 +28,9 @@ _FORMAT_MAP = {
     'TimeField': 'time',
     'DateTimeField': 'datetime',
     'IPAddressField': 'ip',
-    'GenericIPAddressField': 'ip'
+    'GenericIPAddressField': 'ip',
 }
+
 
 _MIN_MAP = {
     'SmallIntegerField': -32768,
@@ -38,6 +40,7 @@ _MIN_MAP = {
     'BigIntegerField': -9223372036854775808,
 }
 
+
 _MAX_MAP = {
     'SmallIntegerField': 32767,
     'PositiveSmallIntegerField': 32767,
@@ -46,7 +49,9 @@ _MAX_MAP = {
     'BigIntegerField': 9223372036854775807,
 }
 
+
 class ApiFieldRule(object):
+
     def __init__(self, field):
         # Only one rule set per field
         rule = {}

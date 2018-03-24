@@ -3,6 +3,7 @@ from importlib import import_module
 from django.core.urlresolvers import reverse
 from django.conf.urls import include, url
 
+
 def api_include(urlconf_module, namespace=None, app_name=None):
     """Include api patterns from a module.
 
@@ -13,6 +14,7 @@ def api_include(urlconf_module, namespace=None, app_name=None):
     if isinstance(urlconf_module, (str, unicode)):
         urlconf_module = import_module(urlconf_module)
     return include(getattr(urlconf_module, 'apipatterns', urlconf_module), namespace, app_name)
+
 
 def api_patterns(*args):
     """Create and add api patterns to urlpatterns.
@@ -45,6 +47,7 @@ def api_patterns(*args):
                 apipatterns.append(url('^api/%d/%s' % (i, api_path), included))
     return apipatterns
 
+
 def __api_reverse_suffix(path):
     """Return the normalized suffix of a url without any api information so that the correct version can be added."""
     if path.startswith('/api/'):
@@ -55,6 +58,7 @@ def __api_reverse_suffix(path):
             return path[4:]
     else:
         return path
+
 
 def api_reverse(viewname, version=0, urlconf=None, args=None, kwargs=None, prefix=None, current_app=None):
     path = reverse(viewname, args=args, kwargs=kwargs)

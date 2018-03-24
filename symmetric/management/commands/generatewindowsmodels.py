@@ -6,15 +6,18 @@ from django.template import Template
 
 from symmetric.management.generatemodels import GenerateModelsCommand
 
+
 class Command(BaseCommand, GenerateModelsCommand):
     help = 'Generate Windows Phone models for API models or endpoints.'
     option_list = BaseCommand.option_list + GenerateModelsCommand.option_list + (
-            make_option('--namespace',
+            make_option(
+                '--namespace',
                 action='store',
                 dest='namespace',
                 type='string',
                 default='com.business.app',
-                help='Set the Windows namespace.'),
+                help='Set the Windows namespace.',
+            ),
         )
 
     def extra_context(self, model, api_model):

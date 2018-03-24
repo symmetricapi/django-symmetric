@@ -5,6 +5,7 @@ from django.test import TestCase
 from symmetric.filters import subclass_filter
 from symmetric.functions import datetime_to_iso_8601, get_object_list_data
 
+
 class Place(models.Model):
     name = models.CharField(max_length=127)
     website = models.CharField(max_length=255, blank=True)
@@ -12,17 +13,21 @@ class Place(models.Model):
     attributes = models.IntegerField(default=0)
     created = models.DateTimeField(auto_now_add=True)
 
+
 class Restaurant(Place):
     seating_capacity = models.IntegerField()
     average_rating = models.FloatField()
     cuisine = models.CharField(max_length=127)
 
+
 class Store(Place):
     type = models.IntegerField()
     average_price = models.FloatField()
 
+
 def fake_request():
     pass
+
 
 class ApiSubclassFilterTest(TestCase):
 

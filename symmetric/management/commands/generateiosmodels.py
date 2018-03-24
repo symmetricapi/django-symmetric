@@ -7,6 +7,7 @@ from django.template import Template
 from symmetric.management.generatemodels import GenerateModelsCommand
 from symmetric.management.translate import data_to_objc
 
+
 included_field_setter = """{% if included %}- (void)set{{ name|title }}:({{ included_name }} *)new{{ name|title }}
 {
     if([new{{ name|title }} isKindOfClass:[NSDictionary class]])
@@ -22,6 +23,7 @@ included_field_setter = """{% if included %}- (void)set{{ name|title }}:({{ incl
     }
 }
 {% endif %}"""
+
 
 class Command(BaseCommand, GenerateModelsCommand):
     help = 'Generate iOS models for API models or endpoints.'

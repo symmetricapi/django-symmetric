@@ -2,6 +2,7 @@ from django.test import TestCase
 
 from symmetric.functions import *
 
+
 class ApiFunctionsTest(TestCase):
 
     def assertAttributes(self, obj, **attrs):

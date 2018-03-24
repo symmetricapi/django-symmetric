@@ -6,6 +6,7 @@ from django.template import Template
 
 from symmetric.management.generateconnections import GenerateConnectionsCommand
 
+
 READ_OBJECT_METHOD = """
     public void read{{ name }}{% if param %}With{{ param }}({{ param_type }} {{ name_lower }}{{ param }}){% else %}(){% endif %}
     {
@@ -134,8 +135,10 @@ UPDATE_RELATED_METHOD = """
         connection.update{{ name }}For{{ parent_name }}{% if param %}With{{ param }}({{ name_lower }}, {{ parent_name_lower }}{{ param }}){% else %}({{ name_lower }}){% endif %};
     }"""
 
+
 def indent(s, indentation):
     return '\n'.join([indentation + line for line in s.splitlines()])
+
 
 READ_OBJECT_RESPONSE = indent("""
 case REQUEST_READ_{{ name|upper }}:
@@ -211,20 +214,25 @@ case REQUEST_UPDATE_{{ parent_name|upper }}_{{ name|upper }}:
         API.runOnUiThread(new Runnable() { public void run() { {{ app_name }}Connection.this.listener.{{ app_name_lower }}ConnectionDidUpdate{{ name }}For{{ parent_name }}({{ app_name }}Connection.this, ({{ name }}){{ app_name }}Connection.this.requestObject); } });
     break;""", '\t' * 7)
 
+
 class Command(BaseCommand, GenerateConnectionsCommand):
     help = 'Generate Android connections for API endpoints.'
     option_list = BaseCommand.option_list + GenerateConnectionsCommand.option_list + (
-        make_option('--connection',
+        make_option(
+            '--connection',
             type='string',
             dest='connection',
             default='APIURLConnection',
-            help='Connection class to use that should have the same interface as ???.'),
-        make_option('--package',
+            help='Connection class to use that should have the same interface as ???.',
+        ),
+        make_option(
+            '--package',
             action='store',
             dest='package',
             type='string',
             default='com.business.app',
-            help='Set the Android package name.'),
+            help='Set the Android package name.',
+        ),
     )
 
     def extra_context(self):
@@ -255,7 +263,7 @@ class Command(BaseCommand, GenerateConnectionsCommand):
             'READ_RELATED_OBJECT': Template(request_types_base % ('READ', '{{ parent_name|upper }}_{{ name|upper }}')),
             'UPDATE_RELATED': Template(request_types_base % ('UPDATE', '{{ parent_name|upper }}_{{ name|upper }}')),
             'RemoveDuplicates': True,
-            'Sort': True
+            'Sort': True,
         }
 
         urls_mapping = {}
@@ -278,7 +286,7 @@ class Command(BaseCommand, GenerateConnectionsCommand):
             'READ_RELATED_OBJECT': Template(listener_method_decls_base % ('Read{{ name }}For{{ parent_name }}', '{{ name }} {{ name_lower }}')),
             'UPDATE_RELATED': Template(listener_method_decls_base % ('Update{{ name }}For{{ parent_name }}', '{{ name }} {{ name_lower }}')),
             'RemoveDuplicates': True,
-            'Sort': True
+            'Sort': True,
         }
 
         basic_listener_methods_base = 'public void {{ app_name_lower }}ConnectionDid%s({{ app_name }}Connection connection, %s) { Log.i(API.TAG, "{{ app_name }} did %s."); }'
@@ -293,7 +301,7 @@ class Command(BaseCommand, GenerateConnectionsCommand):
             'READ_RELATED_OBJECT': Template(basic_listener_methods_base % ('Read{{ name }}For{{ parent_name }}', '{{ name }} {{ name_lower }}', 'read {{ name_lower }} for {{ parent_name_lower }}')),
             'UPDATE_RELATED': Template(basic_listener_methods_base % ('Update{{ name }}For{{ parent_name }}', '{{ name }} {{ name_lower }}', 'update {{ name_lower }} for {{ parent_name_lower }}')),
             'RemoveDuplicates': True,
-            'Sort': True
+            'Sort': True,
         }
 
         methods_mapping = {
@@ -305,7 +313,7 @@ class Command(BaseCommand, GenerateConnectionsCommand):
             'READ_RELATED_LIST': Template(READ_RELATED_LIST_METHOD),
             'CREATE_RELATED': Template(CREATE_RELATED_METHOD),
             'READ_RELATED_OBJECT': Template(READ_RELATED_OBJECT_METHOD),
-            'UPDATE_RELATED': Template(UPDATE_RELATED_METHOD)
+            'UPDATE_RELATED': Template(UPDATE_RELATED_METHOD),
         }
 
         response_cases_mapping = {
@@ -318,7 +326,7 @@ class Command(BaseCommand, GenerateConnectionsCommand):
             'CREATE_RELATED': Template(CREATE_RELATED_RESPONSE),
             'READ_RELATED_OBJECT': Template(READ_RELATED_OBJECT_RESPONSE),
             'UPDATE_RELATED': Template(UPDATE_RELATED_RESPONSE),
-            'RemoveDuplicates': True
+            'RemoveDuplicates': True,
         }
 
         # Set the configuration options and render

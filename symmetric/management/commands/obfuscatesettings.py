@@ -4,20 +4,25 @@ from optparse import make_option
 from django.conf import settings
 from django.core.management.base import BaseCommand
 
+
 class Command(BaseCommand):
     help = 'Obfuscate specified settings, keys, secrets etc. for use in mobile apps.'
     option_list = BaseCommand.option_list + (
-            make_option('--ios',
-                action='store_true',
-                dest='ios',
-                default=False,
-                help='Output obfuscated iOS code.'),
-            make_option('--android',
-                action='store_true',
-                dest='android',
-                default=False,
-                help='Output obfuscated Android code.')
-        )
+        make_option(
+            '--ios',
+            action='store_true',
+            dest='ios',
+            default=False,
+            help='Output obfuscated iOS code.',
+        ),
+        make_option(
+            '--android',
+            action='store_true',
+            dest='android',
+            default=False,
+            help='Output obfuscated Android code.',
+        ),
+    )
 
     def handle(self, *args, **options):
         random.seed(None)

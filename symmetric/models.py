@@ -7,12 +7,14 @@ def api_property(code, return_type=int, translations=None):
     api_property_fun.api_translations = translations
     return property(api_property_fun)
 
+
 def create_model(name, fields):
     from django.db import models
     """Create a model with a dict of named fields."""
     fields = dict(fields)
     fields['__module__'] = 'api.models'
     return type(name, (models.Model,), fields)
+
 
 def clone_model(model, name):
     """Clone a model with same fields and subclasses, just changing the name. Requires 1.7+ for field.clone()"""
@@ -27,6 +29,7 @@ def clone_model(model, name):
             if type(attr) is property and attr.fget and hasattr(attr.fget, 'api_code'):
                 fields[field_name] = api_property(attr.fget.api_code, attr.fget.api_type, attr.fget.api_translations)
     return type(name, model.__bases__, fields)
+
 
 def get_related_model(field):
     try:

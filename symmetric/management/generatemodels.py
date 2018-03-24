@@ -16,25 +16,33 @@ from symmetric.management.translate import translate_code
 from symmetric.models import get_related_model
 from symmetric.views import ApiAction, ApiRequirement, BasicApiView, api_view
 
+
 get_model = apps.get_model
+
 
 class GenerateModelsCommand(object):
     option_list = (
-            make_option('--prefix',
-                type='string',
-                dest='prefix',
-                default='',
-                help='Prefix to add to each class name and file name.'),
-            make_option('--dest',
-                type='string',
-                dest='dest',
-                help='Output the all detected models from api endpoints and render them into this destination directory.'),
-            make_option('--exclude',
-                type='string',
-                dest='exclude',
-                action='append',
-                help='Do not output anything for the models specified.')
-        )
+        make_option(
+            '--prefix',
+            type='string',
+            dest='prefix',
+            default='',
+            help='Prefix to add to each class name and file name.',
+        ),
+        make_option(
+            '--dest',
+            type='string',
+            dest='dest',
+            help='Output the all detected models from api endpoints and render them into this destination directory.',
+        ),
+        make_option(
+            '--exclude',
+            type='string',
+            dest='exclude',
+            action='append',
+            help='Do not output anything for the models specified.',
+        ),
+    )
 
     def get_include_related_models(self, model):
         related_models = set()

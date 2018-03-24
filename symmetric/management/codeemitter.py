@@ -1,6 +1,8 @@
 from __future__ import print_function
 
+
 class CodeEmitter(object):
+
     def __init__(self, fobj, indent=0):
         if isinstance(fobj, (str, unicode)):
             fobj = open(fobj, 'w')

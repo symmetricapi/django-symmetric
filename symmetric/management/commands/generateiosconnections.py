@@ -6,6 +6,7 @@ from django.template import Template
 
 from symmetric.management.generateconnections import GenerateConnectionsCommand
 
+
 WITH_PARAM = '{% if param %}With{{ param }}:({{ param_type }}){{ name_lower }}{{ param }}{% endif %}'
 WITH_PARENT_PARAM = '{% if param %}With{{ param }}:({{ param_type }}){{ parent_name_lower }}{{ param }}{% endif %}'
 WITH_PARENT_PARAM_PARAMS = '{% if param %}With{{ param }}:({{ param_type }}){{ parent_name_lower }}{{ param }} params:(APIRequestParams *)params{% else %}WithParams:(APIRequestParams *)params{% endif %}'
@@ -206,15 +207,18 @@ UPDATE_RELATED_RESPONSE = """
                 [self completeWithSelector:@selector({{ app_name_lower }}Connection:didUpdate{{ name }}For{{ parent_name }}:) object:tempRequestObject];
                 break;"""
 
+
 class Command(BaseCommand, GenerateConnectionsCommand):
     help = 'Generate iOS connections for API endpoints.'
     option_list = BaseCommand.option_list + GenerateConnectionsCommand.option_list + (
-            make_option('--connection',
-                type='string',
-                dest='connection',
-                default='APIURLConnection',
-                help='Connection class to use that should have the same interface as NSURLConnection.'),
-        )
+        make_option(
+            '--connection',
+            type='string',
+            dest='connection',
+            default='APIURLConnection',
+            help='Connection class to use that should have the same interface as NSURLConnection.',
+        ),
+    )
 
     def extra_context(self):
         return {'connection': self.connection }
@@ -251,7 +255,7 @@ class Command(BaseCommand, GenerateConnectionsCommand):
             'READ_RELATED_OBJECT': Template(request_types_base % ('READ', '{{ parent_name|upper }}_{{ name|upper }}')),
             'UPDATE_RELATED': Template(request_types_base % ('UPDATE', '{{ parent_name|upper }}_{{ name|upper }}')),
             'RemoveDuplicates': True,
-            'Sort': True
+            'Sort': True,
         }
 
         delegate_method_decls_base = "- (void){{ app_name_lower }}Connection:({{ app_name }}Connection *)connection did%s;"
@@ -266,7 +270,7 @@ class Command(BaseCommand, GenerateConnectionsCommand):
             'READ_RELATED_OBJECT': Template(delegate_method_decls_base % ('Read{{ name }}For{{ parent_name }}:({{ name }} *){{ name_lower }}')),
             'UPDATE_RELATED': Template(delegate_method_decls_base % ('Update{{ name }}For{{ parent_name }}:({{ name }} *){{ name_lower }}')),
             'RemoveDuplicates': True,
-            'Sort': True
+            'Sort': True,
         }
 
         method_decls_mapping = {
@@ -279,7 +283,7 @@ class Command(BaseCommand, GenerateConnectionsCommand):
             'CREATE_RELATED': Template('- (void)create{{ name }}%s:({{ name }} *){{ name_lower }}%s;' % (FOR_PARENT, FOR_PARENT_PARAM)),
             'READ_RELATED_OBJECT': Template('- (void)read{{ name }}For{{ parent_name }}%s;' % WITH_PARENT_PARAM),
             'UPDATE_RELATED': Template('- (void)update{{ name }}%s:({{ name }} *){{ name_lower }}%s;' % (FOR_PARENT, FOR_PARENT_PARAM)),
-            'Sort': True
+            'Sort': True,
         }
 
         block_method_decls_mapping = {
@@ -292,7 +296,7 @@ class Command(BaseCommand, GenerateConnectionsCommand):
             'CREATE_RELATED': Template('- (void)create{{ name }}%s:({{ name }} *){{ name_lower }}%s completionHandler:(APIHandler)completion;' % (FOR_PARENT, FOR_PARENT_PARAM)),
             'READ_RELATED_OBJECT': Template('- (void)read{{ name }}For{{ parent_name }}%s;' % WITH_PARENT_PARAM_COMPLETION),
             'UPDATE_RELATED': Template('- (void)update{{ name }}%s:({{ name }} *){{ name_lower }}%s completionHandler:(APIHandler)completion;' % (FOR_PARENT, FOR_PARENT_PARAM)),
-            'Sort': True
+            'Sort': True,
         }
 
         urls_mapping = {}
@@ -312,7 +316,7 @@ class Command(BaseCommand, GenerateConnectionsCommand):
             'READ_RELATED_LIST': Template(READ_RELATED_LIST_METHOD),
             'CREATE_RELATED': Template(CREATE_RELATED_METHOD),
             'READ_RELATED_OBJECT': Template(READ_RELATED_OBJECT_METHOD),
-            'UPDATE_RELATED': Template(UPDATE_RELATED_METHOD)
+            'UPDATE_RELATED': Template(UPDATE_RELATED_METHOD),
         }
 
         response_cases_mapping = {
@@ -325,11 +329,20 @@ class Command(BaseCommand, GenerateConnectionsCommand):
             'CREATE_RELATED': Template(CREATE_RELATED_RESPONSE),
             'READ_RELATED_OBJECT': Template(READ_RELATED_OBJECT_RESPONSE),
             'UPDATE_RELATED': Template(UPDATE_RELATED_RESPONSE),
-            'RemoveDuplicates': True
+            'RemoveDuplicates': True,
         }
 
         # Set the configuration options and render
-        self.mappings = {'imports': imports_mapping, 'request_types': request_types_mapping, 'delegate_method_decls': delegate_method_decls_mapping, 'method_decls': method_decls_mapping, 'block_method_decls': block_method_decls_mapping, 'urls': urls_mapping, 'methods': methods_mapping, 'response_cases': response_cases_mapping }
+        self.mappings = {
+            'imports': imports_mapping,
+            'request_types': request_types_mapping,
+            'delegate_method_decls': delegate_method_decls_mapping,
+            'method_decls': method_decls_mapping,
+            'block_method_decls': block_method_decls_mapping,
+            'urls': urls_mapping,
+            'methods': methods_mapping,
+            'response_cases': response_cases_mapping,
+        }
         self.object_id_format = "%u"
         self.slug_format = "%@"
         self.object_id_type = "uint32_t"

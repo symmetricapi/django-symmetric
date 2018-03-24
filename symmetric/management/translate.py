@@ -4,6 +4,7 @@ from django.conf import settings
 
 from symmetric.functions import underscore_to_camel_case
 
+
 default_token_mapping = {
     ast.Add: '+', ast.Sub: '-', ast.Mult: '*', ast.Div: '/', ast.Mod: '%', ast.LShift: '<<', ast.RShift: '>>', ast.BitOr: '|', ast.BitXor: '^', ast.BitAnd: '&', ast.And: '&&', ast.Or: '||',
     ast.Eq: '==', ast.NotEq: '!=', ast.Lt: '<', ast.LtE: '<=', ast.Gt: '>', ast.GtE: '>=', ast.Is: '==', ast.IsNot: '!=',
@@ -28,6 +29,7 @@ objc_token_mapping.update({ast.Str: ('@"', '"'), ast.Subscript: ('[', ' substrin
 # Bridge to objc, because substring method in swift is too complicated: http://stackoverflow.com/questions/39677330/how-does-string-substring-work-in-swift-3
 swift_token_mapping = default_token_mapping.copy()
 swift_token_mapping.update({ast.Subscript: ('(', ' as NSString).substring(with: NSMakeRange(', '))')})
+
 
 def translate_ast(node, token_mapping=default_token_mapping):
     tokens = token_mapping.get(type(node))
@@ -55,8 +57,10 @@ def translate_ast(node, token_mapping=default_token_mapping):
                     code.append(translate_ast(exp, token_mapping))
         return ''.join(code)
 
+
 class KeywordTransformer(ast.NodeTransformer):
     """Rename self to this. Also rename None, True, and False."""
+
     def __init__(self, lang):
         if lang == 'objc':
             self.id_self = 'self'
@@ -88,8 +92,10 @@ class KeywordTransformer(ast.NodeTransformer):
             node.id = self.id_false
         return node
 
+
 class CamelcaseTransformer(ast.NodeTransformer):
     """Convert all names to camelcase."""
+
     def visit_Name(self, node):
         node.id = underscore_to_camel_case(node.id)
         return node
@@ -100,8 +106,10 @@ class CamelcaseTransformer(ast.NodeTransformer):
             node.attr = underscore_to_camel_case(node.attr)
         return node
 
+
 class IdTransformer(ast.NodeTransformer):
     """Convert all id attributes."""
+
     def __init__(self, lang):
         self.lang = lang
 
@@ -113,12 +121,15 @@ class IdTransformer(ast.NodeTransformer):
                 node.attr = 'getObjectId()'
         return node
 
+
 class CompareTransformer(ast.NodeTransformer):
     """Convert the Compare's fields to a single comparison, not compound."""
+
     def visit_Compare(self, node):
         node.ops = node.ops[0]
         node.comparators = node.comparators[0]
         return node
+
 
 def _has_str_node(node):
     class _Visitor(ast.NodeVisitor):
@@ -129,8 +140,10 @@ def _has_str_node(node):
     visitor.visit(node)
     return visitor.found
 
+
 class StringFormatTransformer(ast.NodeTransformer):
     """Translate a string format operation (%) directly to desired language."""
+
     def __init__(self, lang):
         self.lang = lang
 
@@ -182,6 +195,7 @@ class StringFormatTransformer(ast.NodeTransformer):
         else:
             return node
 
+
 class SliceTransformer(ast.NodeTransformer):
     """Objective-C indexing works with location, length not start, end index."""
     def __init__(self, lang):
@@ -191,6 +205,7 @@ class SliceTransformer(ast.NodeTransformer):
         if (self.lang == 'objc' or self.lang == 'swift') and node.upper:
             node.upper = ast.BinOp(node.upper, ast.Sub(), node.lower)
         return node
+
 
 class CastTransformer(ast.NodeTransformer):
     """Convert the float, int, and long function calls into a cast unary operation. Convert the len function call into string length."""
@@ -208,6 +223,7 @@ class CastTransformer(ast.NodeTransformer):
                 return node.args[0]
             else:
                 return ast.UnaryOp('(%s)' % node.func.id, node.args[0])
+
 
 def translate_code(code, lang='js', transformer=None):
     node = ast.parse(code, mode='eval')
@@ -233,6 +249,7 @@ def translate_code(code, lang='js', transformer=None):
         token_mapping = swift_token_mapping
     return translate_ast(node, token_mapping)
 
+
 def data_to_objc(data, mutable=True):
     objc = ''
     if callable(data):
@@ -252,6 +269,7 @@ def data_to_objc(data, mutable=True):
     if mutable:
         return '[%s mutableCopy]' % objc
     return objc
+
 
 def data_to_swift(data):
     swift = ''

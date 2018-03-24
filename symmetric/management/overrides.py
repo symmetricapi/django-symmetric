@@ -4,14 +4,18 @@ import symmetric.filters
 import symmetric.views
 from symmetric.views import ApiAction, ApiRequirement
 
+
 get_model = apps.get_model
+
 
 """
 Override most of the api views to collect information about project's API.
 This file must be imported before accessing any of the views getting overridden!
 """
 
+
 class _api_view(object):
+
     def __init__(self, model, actions=ApiAction.READ, requirements=0, filter=None, authorization=None, verification=None):
         if isinstance(model, (str, unicode)):
             model = model.split('.')
@@ -28,7 +32,9 @@ class _api_view(object):
         # Empty call so that django will accept is as a view
         pass
 
+
 class _subclass_filter(object):
+
     def __init__(self, *subclasses, **names):
         subclasses = list(subclasses)
         for i, subclass in enumerate(subclasses):
@@ -42,7 +48,9 @@ class _subclass_filter(object):
         subclass_names = [cls.__name__ for cls in self.subclasses]
         return 'Generate a mixed result set of ' + ', '.join(subclass_names) + ' objects'
 
+
 class _combine_filters(object):
+
     def __init__(self, *filters):
         self.filters = filters
 
@@ -55,7 +63,9 @@ class _combine_filters(object):
                 info.append(get_doc_str(filter))
         return '\n'.join(info)
 
+
 class _api_related_view(_api_view):
+
     def __init__(self, model, related_model, related_field, actions=ApiAction.READ, requirements=0, filter=None, authorization=None, verification=None):
         if isinstance(model, (str, unicode)):
             model = model.split('.')
@@ -76,7 +86,9 @@ class _api_related_view(_api_view):
         # Empty call so that django will accept is as a view
         pass
 
+
 class _api_filter_contacts_view(object):
+
     def __init__(self, requirements=ApiRequirement.LOGIN|ApiRequirement.HTTPS, fields=('email',)):
         self.requirements = requirements
         self.fields = fields
@@ -85,6 +97,7 @@ class _api_filter_contacts_view(object):
     def __call__(self):
         # Empty call so that django will accept is as a view
         pass
+
 
 symmetric.views.api_view = _api_view
 symmetric.views.api_related_view = _api_related_view

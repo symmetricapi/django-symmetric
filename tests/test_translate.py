@@ -2,6 +2,7 @@ from django.test import TestCase
 
 from symmetric.management.translate import translate_code
 
+
 class TranslateTest(TestCase):
 
     def test_comparison(self):

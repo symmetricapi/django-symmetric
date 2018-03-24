@@ -4,8 +4,9 @@ from django.conf import settings
 from django.http import HttpRequest, QueryDict
 from django.utils.datastructures import MultiValueDict
 
-from .response import render_error
-from .views import ApiAction
+from symmetric.response import render_error
+from symmetric.views import ApiAction
+
 
 class ApiMiddleware(object):
     """

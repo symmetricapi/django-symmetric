@@ -23,14 +23,17 @@ from symmetric.management.translate import translate_code
 from symmetric.models import get_related_model
 from symmetric.views import ApiAction, ApiRequirement, BasicApiView, api_view
 
+
 try:
     from generate import backbone_callback
 except:
     def backbone_callback(name, model, collection, **kwargs):
         pass
 
+
 class BackboneAttributeTransformer(ast.NodeTransformer):
     """Any access to self.property_name should be converted to self.attributes.property_name if it is a field."""
+
     def __init__(self, model):
         self.model = model
 
@@ -46,76 +49,103 @@ class BackboneAttributeTransformer(ast.NodeTransformer):
             self.visit(node.value)
         return node
 
+
 def unjson(jsn):
     # Convert spaces to tabs and json keys to unquoted javascript attributes
     return re.sub(r'"([a-zA-Z0-9][^"]*)":', r'\1:', jsn)
 
+
 separators = (',', ': ')
+
 
 class Command(BaseCommand):
     help = 'Generate backbone models for API endpoints.'
     option_list = BaseCommand.option_list + (
-            make_option('--dest',
-                dest='dest',
-                type='string',
-                default='.',
-                help='Output the models and colllections into models/ and collections/ inside the path given.'),
-            make_option('--module-type',
-                dest='module_type',
-                type='string',
-                default='global',
-                help='Output the models inside the specified module type. Options are: global, amd, cjs, esm.'),
-            make_option('--es6',
-                action='store_true',
-                dest='es6',
-                default=False,
-                help='Output the code as es6 code. If module-type is not given also implies esm module-type.'),
-            make_option('--defaults',
-                action='store_true',
-                dest='defaults',
-                default=False,
-                help='Add in available default values into the models.'),
-            make_option('--descriptions',
-                action='store_true',
-                dest='descriptions',
-                default=False,
-                help='Add the help_text for each field under a descriptions object.'),
-            make_option('--titles',
-                action='store_true',
-                dest='titles',
-                default=False,
-                help='Add the verbose name for each field under a titles object.'),
-            make_option('--choices',
-                action='store_true',
-                dest='choices',
-                default=False,
-                help='Add the choices for each field under a choices object.'),
-            make_option('--formats',
-                action='store_true',
-                dest='formats',
-                default=False,
-                help='Add all field format messages used as errors when a field is invalid.'),
-            make_option('--cord',
-                action='store_true',
-                dest='cord',
-                default=False,
-                help='Use cord functionality for defining properties, validation, and submodels.'),
-            make_option('--validation',
-                action='store_true',
-                dest='validation',
-                default=False,
-                help='Add a validation method to each model.'),
-            make_option('--validation-method',
-                dest='validation_method',
-                type='string',
-                default='validate',
-                help='Validation method to call, defaults to the global validate method. If --cord is given this default will become Backbone.Cord.validate'),
-            make_option('--indent',
-                dest='indent',
-                type='int',
-                default=0,
-                help='Each tab should instead indent with this number of spaces.')
-        )
+        make_option(
+            '--dest',
+            dest='dest',
+            type='string',
+            default='.',
+            help='Output the models and colllections into models/ and collections/ inside the path given.',
+        ),
+        make_option(
+            '--module-type',
+            dest='module_type',
+            type='string',
+            default='global',
+            help='Output the models inside the specified module type. Options are: global, amd, cjs, esm.',
+        ),
+        make_option(
+            '--es6',
+            action='store_true',
+            dest='es6',
+            default=False,
+            help='Output the code as es6 code. If module-type is not given also implies esm module-type.',
+        ),
+        make_option(
+            '--defaults',
+            action='store_true',
+            dest='defaults',
+            default=False,
+            help='Add in available default values into the models.',
+        ),
+        make_option(
+            '--descriptions',
+            action='store_true',
+            dest='descriptions',
+            default=False,
+            help='Add the help_text for each field under a descriptions object.',
+        ),
+        make_option(
+            '--titles',
+            action='store_true',
+            dest='titles',
+            default=False,
+            help='Add the verbose name for each field under a titles object.',
+        ),
+        make_option(
+            '--choices',
+            action='store_true',
+            dest='choices',
+            default=False,
+            help='Add the choices for each field under a choices object.',
+        ),
+        make_option(
+            '--formats',
+            action='store_true',
+            dest='formats',
+            default=False,
+            help='Add all field format messages used as errors when a field is invalid.',
+        ),
+        make_option(
+            '--cord',
+            action='store_true',
+            dest='cord',
+            default=False,
+            help='Use cord functionality for defining properties, validation, and submodels.',
+        ),
+        make_option(
+            '--validation',
+            action='store_true',
+            dest='validation',
+            default=False,
+            help='Add a validation method to each model.',
+        ),
+        make_option(
+            '--validation-method',
+            dest='validation_method',
+            type='string',
+            default='validate',
+            help='Validation method to call, defaults to the global validate method. If --cord is given this default will become Backbone.Cord.validate',
+        ),
+        make_option(
+            '--indent',
+            dest='indent',
+            type='int',
+            default=0,
+            help='Each tab should instead indent with this number of spaces.',
+        ),
+    )
 
     def add_choices(self, model):
         choices = {}

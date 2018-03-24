@@ -2,6 +2,7 @@ from django.test import TestCase
 
 from symmetric.management.functions import *
 
+
 class ApiManagementTest(TestCase):
 
     _VERBOSE = 'Hello World Test'

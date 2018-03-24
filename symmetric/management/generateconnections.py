@@ -12,6 +12,7 @@ from symmetric.functions import _ApiModel
 from symmetric.management.functions import format_regex_stack, get_app_url_prefix, is_sublist, get_subclass_filter, get_model_name
 from symmetric.views import ApiAction, ApiRequirement, BasicApiView, api_view
 
+
 """
     Connection actions are mapped in the following way:
     api_view or ApiView
@@ -54,13 +55,16 @@ from symmetric.views import ApiAction, ApiRequirement, BasicApiView, api_view
     when param is set add withSlug or withId to the method signatures above and additional id or slug argument
 """
 
+
 class GenerateConnectionsCommand(object):
     option_list = (
-            make_option('--dest',
-                type='string',
-                dest='dest',
-                help='Output all connections for the detected apps with api endpoints and render them into this destination directory.'),
-        )
+        make_option(
+            '--dest',
+            type='string',
+            dest='dest',
+            help='Output all connections for the detected apps with api endpoints and render them into this destination directory.',
+        ),
+    )
     ALL_ACTIONS = ('READ_OBJECT', 'READ_LIST', 'CREATE', 'UPDATE', 'DELETE', 'READ_RELATED_OBJECT', 'UPDATE_RELATED', 'READ_RELATED_LIST', 'CREATE_RELATED')
 
     def post_render(self, output):

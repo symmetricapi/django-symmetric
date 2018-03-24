@@ -1,12 +1,14 @@
 from django.contrib.contenttypes.models import ContentType
 from django.db.models.query import QuerySet
 
+
 __METHOD_PERM_DICT = {
     'POST': 'add',
     'PUT': 'change',
     'PATCH': 'change',
     'DELETE': 'delete'
 }
+
 
 def default_permission_authorization(request, obj):
     """Check default permissions based on the object's model."""
@@ -16,6 +18,7 @@ def default_permission_authorization(request, obj):
         perm = '%s.%s_%s' % (content_type.app_label, perm, content_type.model)
         return request.user.has_perm(perm)
     return True
+
 
 def superuser_exempt(filter_authorization_verification):
     """Decorator to exempt any superuser from filtering, authorization, or verification functions."""

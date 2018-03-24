@@ -11,9 +11,7 @@ insert_final_newline = true
 # Markdown
 [*.md]
 trim_trailing_whitespace = false
-indent_size = 2
 
 # reStructuredText
 [*.rst]
 trim_trailing_whitespace = false
-indent_size = 2

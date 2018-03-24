@@ -5,12 +5,14 @@ def get_doc_str(fun):
     else:
         return 'No documentation provided for %s()' % fun.__name__
 
+
 def get_base_classes(c):
     """Given a class, return all of its base classes as a list."""
     base_classes = list(c.__bases__)
     for b in list(base_classes):
         base_classes.extend(get_base_classes(b))
     return base_classes
+
 
 def get_base_models(c):
     from django.db import models
@@ -21,10 +23,12 @@ def get_base_models(c):
             bases.append(cls)
     return bases
 
+
 def get_base_model(c):
     bases = get_base_models(c)
     if bases:
         return bases[0]
+
 
 def get_api_properties(model):
     """Given a model, gather all of its api properties."""
@@ -35,6 +39,7 @@ def get_api_properties(model):
             if type(attr) is property and attr.fget and hasattr(attr.fget, 'api_code'):
                 properties[field_name] = attr
     return properties
+
 
 def get_resource_type(regex_stack, pattern):
     """Given a pattern, determine its type of 'Single Object', 'Object', or 'Collection'."""
@@ -58,6 +63,7 @@ def get_resource_type(regex_stack, pattern):
         else:
             return 'Object'
 
+
 def get_app_url_prefix(app_name, app_patterns):
     """Get the url prefix for an app's urls."""
     from importlib import import_module
@@ -74,6 +80,7 @@ def get_app_url_prefix(app_name, app_patterns):
                 return urlpattern._regex
     return ''
 
+
 def get_field(model, field_name):
     """Run get_field on the model, but detect _id as a fallback."""
     try:
@@ -84,6 +91,7 @@ def get_field(model, field_name):
         else:
             raise e
 
+
 def has_field(model, field_name, include_inherited=True):
     try:
         field = model._meta.get_field(field_name)
@@ -93,6 +101,7 @@ def has_field(model, field_name, include_inherited=True):
             return field.model is model
     except:
         return False
+
 
 def get_subclass_filter(view):
     from symmetric.filters import subclass_filter, combine_filters
@@ -110,13 +119,16 @@ def get_subclass_filter(view):
             filter = _from_combined(view.filter)
     return filter
 
+
 def get_model_name(model):
     """Given a model, return its CamelCase singular name."""
     return model.__name__
 
+
 def get_model_name_plural(model):
     """Given a model, return its CamelCase plural name."""
     return verbose_to_camel_case(model._meta.verbose_name_plural)
+
 
 def get_collection_name(view):
     """Given a view, return the CamelCase singular name of the collection."""
@@ -124,6 +136,7 @@ def get_collection_name(view):
     if filter and filter.names and filter.names.has_key('name'):
         return filter.names['name']
     return get_model_name(view.model)
+
 
 def get_collection_name_plural(view):
     """Given a view, return the CamelCase plural name of the collection."""
@@ -134,6 +147,7 @@ def get_collection_name_plural(view):
         elif filter.names.has_key('name'):
             return filter.names['name'] + 's'
     return get_model_name_plural(view.model)
+
 
 def is_sublist(list, sublist):
     """Take a list and potential sublist and compare for membership."""
@@ -147,6 +161,7 @@ def is_sublist(list, sublist):
                 return True
     return False
 
+
 def is_anonymous(view):
     """Returns True/False depending on if the view allows anonymous access or not."""
     from symmetric.views import ApiRequirement
@@ -154,6 +169,7 @@ def is_anonymous(view):
         if view.requirements & ApiRequirement.LOGIN and not view.requirements & ApiRequirement.ANONYMOUS_READ:
             return False
     return True
+
 
 def is_auto_now(field_name, view):
     """Return True/False depending on if the field in this view is auto_now."""
@@ -165,6 +181,7 @@ def is_auto_now(field_name, view):
                 return True
     return False
 
+
 def is_readonly(model, field_name):
     from symmetric.functions import _ApiModel
     api_model = _ApiModel(model)
@@ -172,6 +189,7 @@ def is_readonly(model, field_name):
         if field_name == decoded_name:
             return encoded_name not in api_model.encoded_fields
     return True
+
 
 def is_excluded(model, field_name, flat=True):
     # Skip any ptr field to base models
@@ -192,11 +210,13 @@ def is_excluded(model, field_name, flat=True):
             break
     return not found
 
+
 def is_included(model, field_name):
     from django.db.models.fields.related import ForeignKey
     include_related = hasattr(model, 'API') and hasattr(model.API, 'include_related') and field_name in model.API.include_related
     field = get_field(model, field_name)
     return (isinstance(field, ForeignKey) and include_related)
+
 
 def format_regex_stack(regex_stack):
     """Format a list or tuple of regex url patterns into a single path."""
@@ -210,13 +230,16 @@ def format_regex_stack(regex_stack):
     formatted = formatted.replace('//','/')
     return formatted
 
+
 def lower_first(string):
     """Lower the first character of the string."""
     return string[0].lower() + string[1:]
 
+
 def verbose_to_camel_case(string):
     """Covert a Verbose Model Name to CamelCaseModelName."""
     return ''.join([word.capitalize() for word in string.split(' ')])
+
 
 def camel_case_to_verbose(string):
     """Convert a CamelCaseModelName to Verbose Model Name."""

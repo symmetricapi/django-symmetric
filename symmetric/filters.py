@@ -5,6 +5,7 @@ from django.db.models import Q, QuerySet
 from .functions import sanitize_order_by, _get_api_model
 from .response import set_response_headers
 
+
 get_model = apps.get_model
 
 
