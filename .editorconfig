@@ -8,10 +8,11 @@ charset = utf-8
 trim_trailing_whitespace = true
 insert_final_newline = true
 
-# Markdown
-[*.md]
+# Markdown and reStructuredText
+[*.{md,rst}]
 trim_trailing_whitespace = false
 
-# reStructuredText
-[*.rst]
-trim_trailing_whitespace = false
+# Template files
+[*.{js,h,m,java,cs}]
+indent_style = tab
+indent_size = 2

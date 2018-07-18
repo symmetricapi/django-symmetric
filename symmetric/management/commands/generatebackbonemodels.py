@@ -142,8 +142,8 @@ class Command(BaseCommand):
             '--indent',
             dest='indent',
             type='int',
-            default=0,
-            help='Each tab should instead indent with this number of spaces.',
+            default=2,
+            help='Each tab should instead indent with this number of spaces or 0 for hard tabs.',
         ),
     )
 

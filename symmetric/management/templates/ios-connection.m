@@ -11,8 +11,7 @@
 
 #pragma mark - {{ name }}Connection
 
-@interface {{ name }}Connection ()
-{
+@interface {{ name }}Connection () {
 	APIAction _action;
 	uint32_t _newObjectId;
 	{{ connection }} *_connection;
@@ -32,35 +31,35 @@
 
 // Completion methods will invoke the callback methods and will also cleanup the temporary blocks if set
 
-- (void)completeWithError:(id)error
-{
+- (void)completeWithError:(id)error {
 	APIHandler completionHandler = _completionHandler;
 	APIReadHandler readHandler = _readHandler;
 	APIListHandler listHandler = _listHandler;
 	NSError *apiError;
 
-	if([error isKindOfClass:[NSError class]])
+	if ([error isKindOfClass:[NSError class]]) {
 		apiError = (NSError *)error;
-	else
+	} else {
 		apiError = [NSError errorWithMessage:(NSString *)error];
+	}
 	_completionHandler = nil;
 	_readHandler = nil;
 	_listHandler = nil;
-	if([_delegate respondsToSelector:@selector({{ name|lower }}Connection:requestFailed:)])
+	if ([_delegate respondsToSelector:@selector({{ name|lower }}Connection:requestFailed:)]) {
 		[_delegate {{ name|lower }}Connection:self requestFailed:apiError];
-	else if(completionHandler)
+	} else if (completionHandler) {
 		completionHandler(apiError);
-	else if(readHandler)
+	} else if (readHandler) {
 		readHandler(nil, apiError);
-	else if(listHandler)
+	} else if (listHandler) {
 		listHandler(nil, apiError);
+	}
 	[completionHandler release];
 	[readHandler release];
 	[listHandler release];
 }
 
-- (void)completeWithSelector:(SEL)selector object:(id)obj
-{
+- (void)completeWithSelector:(SEL)selector object:(id)obj {
 	APIHandler completionHandler = _completionHandler;
 	APIReadHandler readHandler = _readHandler;
 	APIListHandler listHandler = _listHandler;
@@ -68,28 +67,27 @@
 	_completionHandler = nil;
 	_readHandler = nil;
 	_listHandler = nil;
-	if([_delegate respondsToSelector:selector])
+	if ([_delegate respondsToSelector:selector]) {
 		[_delegate performSelector:selector withObject:obj];
-	else if(completionHandler)
+	} else if (completionHandler) {
 		completionHandler(nil);
-	else if(readHandler)
+	} else if (readHandler) {
 		readHandler(obj, nil);
-	else if(listHandler)
+	} else if (listHandler) {
 		listHandler(obj, nil);
+	}
 	[completionHandler release];
 	[readHandler release];
 	[listHandler release];
 }
 
-- (void)performRequestWithObject:(id)obj action:(APIAction)action requestType:({{ name }}RequestType)requestType path:(NSString *)path https:(BOOL)https login:(BOOL)loginRequired sign:(BOOL)sign
-{
+- (void)performRequestWithObject:(id)obj action:(APIAction)action requestType:({{ name }}RequestType)requestType path:(NSString *)path https:(BOOL)https login:(BOOL)loginRequired sign:(BOOL)sign {
 	NSURLRequest *request;
 
 	[self retain];
 
 	// Clean up a current connection
-	if(_connection != nil)
-	{
+	if (_connection != nil) {
 		[_connection cancel];
 		[self release];
 	}
@@ -97,76 +95,63 @@
 	self.requestObject = nil;
 	self.responseData = nil;
 
-	if(_requestParams)
+	if (_requestParams) {
 		path = [NSString stringWithFormat:@"%@?%@", path, [_requestParams urlEncodedArgs]];
+	}
 	request = [API requestWithAction:action path:path data:[obj urlEncodedData] extraData:_requestData https:https sign:sign];
 	_requestType = requestType;
 	_connection = [{{ connection }} connectionWithRequest:request delegate:self loginRequired:loginRequired];
-	if(_connection)
-	{
+	if (_connection) {
 		_action = action;
 		self.requestObject = obj;
 		self.responseData = [NSMutableData data];
-	}
-	else
-	{
+	} else {
 		[self completeWithError:STRING_API_BADCONNECTION];
 		_requestType = REQUEST_{{ name|upper }}_NONE;
 		[self release];
 	}
 }
 
-- (id)processResponseWithClass:(Class)cls NS_RETURNS_RETAINED
-{
-	if(_action == API_ACTION_LIST)
-	{
+- (id)processResponseWithClass:(Class)cls NS_RETURNS_RETAINED {
+	if (_action == API_ACTION_LIST) {
 		NSMutableArray *array;
-		if([API serializationType] == API_SERIALIZATION_JSON)
-		{
+		if ([API serializationType] == API_SERIALIZATION_JSON) {
 			NSError *error;
 			id obj;
 			array = (NSMutableArray *)[[NSJSONSerialization JSONObjectWithData:_responseData options:NSJSONReadingMutableContainers error:&error] retain];
-			for(NSUInteger index = 0; index < [array count]; ++index)
-			{
+			for (NSUInteger index = 0; index < [array count]; ++index) {
 				obj = [[cls alloc] init];
 				[obj setValuesForKeysWithDictionary:[array objectAtIndex:index]];
 				[array replaceObjectAtIndex:index withObject:obj];
 				[obj release];
 			}
-		}
-		else
-		{
+		} else {
 			array = [[NSMutableArray alloc] init];
 			[API parseXMLData:_responseData intoArray:array withClass:cls];
 		}
 		return array;
-	}
-	else
-	{
+	} else {
 		id obj;
-		if([API serializationType] == API_SERIALIZATION_JSON)
+		if ([API serializationType] == API_SERIALIZATION_JSON) {
 			obj = [[cls alloc] initWithJSONData:_responseData];
-		else
+		} else {
 			obj = [[cls alloc] initWithXMLData:_responseData];
+		}
 		return obj;
 	}
 }
 
 // A mixed result set, currently JSON only
-- (NSArray *)processResponseWithClasses:(NSDictionary *idsClasses)
-{
+- (NSArray *)processResponseWithClasses:(NSDictionary *idsClasses) {
 	NSError *error;
 	Class cls
 	id obj;
 	NSDictionary *dict;
 	NSMutableArray *array = (NSMutableArray *)[[NSJSONSerialization JSONObjectWithData:_responseData options:NSJSONReadingMutableContainers error:&error] retain];
-	for(NSUInteger index = 0; index < [array count]; ++index)
-	{
+	for (NSUInteger index = 0; index < [array count]; ++index) {
 		dict = [array objectAtIndex:index];
-		for(id idField in idsClasses)
-		{
-			if([dict objectForKey:idField])
-			{
+		for (id idField in idsClasses) {
+			if ([dict objectForKey:idField]) {
 				cls = [idsClasses objectForKey:idField]
 				break;
 			}
@@ -178,21 +163,18 @@
 	}
 }
 
-+ (instancetype)connection
-{
++ (instancetype)connection {
 	{{ name }}Connection *connection = [[[{{ name }}Connection alloc] init] autorelease];
 	return connection;
 }
 
-+ (instancetype)connectionWithDelegate:(id)delegate
-{
++ (instancetype)connectionWithDelegate:(id)delegate {
 	{{ name }}Connection *connection = [[[{{ name }}Connection alloc] init] autorelease];
 	connection.delegate = delegate;
 	return connection;
 }
 
-- (void)dealloc
-{
+- (void)dealloc {
 	[_connection cancel];
 	_connection = nil;
 	[_requestObject release];
@@ -205,8 +187,7 @@
 	[super dealloc];
 }
 
-- (void)cancelCurrentRequest
-{
+- (void)cancelCurrentRequest {
 	BOOL activeConnection = (_connection != nil);
 	[_connection cancel];
 	_connection = nil;
@@ -217,48 +198,46 @@
 	self.listHandler = nil;
 	_requestType = REQUEST_{{ name|upper }}_NONE;
 	_statusCode = 0;
-	if(activeConnection)
+	if (activeConnection) {
 		[self release];
+	}
 }{% for method in methods %}
 {{ method }}{% endfor %}
 
 #pragma mark - {{ connection }}Delegate methods
 
-- (void)connection:({{ connection }} *)connection didReceiveResponse:(NSURLResponse *)response
-{
+- (void)connection:({{ connection }} *)connection didReceiveResponse:(NSURLResponse *)response {
 	_statusCode = [(NSHTTPURLResponse *)response statusCode];
-	if(_requestParams)
+	if (_requestParams) {
 		[_requestParams processResponse:(NSHTTPURLResponse *)response];
+	}
 	_newObjectId = [[[(NSHTTPURLResponse *)response allHeaderFields] objectForKey:@"X-New-Object-Id"] unsignedIntValue];
 	[_responseData setLength:0];
 }
 
-- (void)connection:({{ connection }} *)connection didReceiveData:(NSData *)data
-{
+- (void)connection:({{ connection }} *)connection didReceiveData:(NSData *)data {
 	[_responseData appendData:data];
 }
 
-- (NSCachedURLResponse *)connection:({{ connection }} *)connection willCacheResponse:(NSCachedURLResponse *)cachedResponse
-{
+- (NSCachedURLResponse *)connection:({{ connection }} *)connection willCacheResponse:(NSCachedURLResponse *)cachedResponse {
 	return cachedResponse;
 }
 
-- (void)connection:({{ connection }} *)connection didFailWithError:(NSError *)error
-{
+- (void)connection:({{ connection }} *)connection didFailWithError:(NSError *)error {
 	self.requestObject = nil;
 	self.responseData = nil;
 	_connection = nil;
-	if([API isNetworkAvailable])
+	if ([API isNetworkAvailable]) {
 		[self completeWithError:STRING_API_BADCONNECTION];
-	else
+	} else {
 		[self completeWithError:STRING_API_NOINTERNET];
+	}
 	_requestType = REQUEST_{{ name|upper }}_NONE;
 	_statusCode = 0;
 	[self release];
 }
 
-- (void)connectionDidFinishLoading:({{ connection }} *)connection
-{
+- (void)connectionDidFinishLoading:({{ connection }} *)connection {
 	id tempRequestObject, responseObject;
 	NSArray *responseArray;
 
@@ -269,17 +248,13 @@
 	tempRequestObject = [_requestObject retain];
 	self.requestObject = nil;
 	_connection = nil;
-	if(_statusCode >= 400)
-	{
+	if (_statusCode >= 400) {
 		NSError *error = [self processResponseWithClass:[NSError class]];
 		self.responseData = nil;
 		[self completeWithError:error];
 		[error release];
-	}
-	else
-	{
-		switch(_requestType)
-		{
+	} else {
+		switch (_requestType) {
 {% for response_case in response_cases %}{{ response_case }}
 {% endfor %}
 			default:

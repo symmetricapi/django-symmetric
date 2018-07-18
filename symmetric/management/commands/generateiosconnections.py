@@ -16,129 +16,109 @@ WITH_PARAM_COMPLETION = '{% if param %}With{{ param }}:({{ param_type }}){{ name
 WITH_PARENT_PARAM_COMPLETION = '{% if param %}With{{ param }}:({{ param_type }}){{ parent_name_lower }}{{ param }} completionHandler:(APIReadHandler)completion{% else %}WithCompletionHandler:(APIReadHandler)completion{% endif %}'
 
 READ_OBJECT_METHOD = """
-- (void)read{{ name }}/1
-{
+- (void)read{{ name }}/1 {
     NSString *path = {% if param %}[NSString stringWithFormat:URL_{{ app_name|upper }}_{{ name|upper }}_WITH_{{ param|upper }}, {{ name_lower }}{{ param }}]{% else %}URL_{{ app_name|upper }}_{{ name|upper }}{% endif %};
     [self performRequestWithObject:nil action:API_ACTION_READ requestType:REQUEST_{{ app_name|upper }}_READ_{{ name|upper }} path:path https:{% if https %}YES{% else %}NO{% endif %} login:{% if login %}YES{% else %}NO{% endif %} sign:NO];
 }
 
-- (void)read{{ name }}/2
-{
+- (void)read{{ name }}/2 {
     self.readHandler = completion;
     [self read{{ name }}{% if param %}With{{ param }}:{{ name_lower }}{{ param }}{% endif %}];
 }""".replace('/1', WITH_PARAM).replace('/2', WITH_PARAM_COMPLETION)
 
 READ_LIST_METHOD = """
-- (void)read{{ name_plural }}
-{
+- (void)read{{ name_plural }} {
     [self performRequestWithObject:nil action:API_ACTION_LIST requestType:REQUEST_{{ app_name|upper }}_READ_{{ name_plural|upper }} path:URL_{{ app_name|upper }}_{{ name_plural|upper }} https:{% if https %}YES{% else %}NO{% endif %} login:{% if login %}YES{% else %}NO{% endif %} sign:NO];
 }
 
-- (void)read{{ name_plural }}WithParams:(APIRequestParams *)params
-{
+- (void)read{{ name_plural }}WithParams:(APIRequestParams *)params {
     self.requestParams = params;
     [self read{{ name_plural }}];
 }
 
-- (void)read{{ name_plural }}WithParams:(APIRequestParams *)params completionHandler:(APIListHandler)completion
-{
+- (void)read{{ name_plural }}WithParams:(APIRequestParams *)params completionHandler:(APIListHandler)completion {
     self.requestParams = params;
     self.listHandler = completion;
     [self read{{ name_plural }}];
 }"""
 
 CREATE_METHOD = """
-- (void)create{{ name }}:({{ name }} *){{ name_lower }}
-{
+- (void)create{{ name }}:({{ name }} *){{ name_lower }} {
     [self performRequestWithObject:{{ name_lower }} action:API_ACTION_CREATE requestType:REQUEST_{{ app_name|upper }}_CREATE_{{ name|upper }} path:URL_{{ app_name|upper }}_{{ name_plural|upper }} https:{% if https %}YES{% else %}NO{% endif %} login:{% if login %}YES{% else %}NO{% endif %} sign:{% if hmac %}YES{% else %}NO{% endif %}];
 }
 
-- (void)create{{ name }}:({{ name }} *){{ name_lower }} completionHandler:(APIHandler)completion
-{
+- (void)create{{ name }}:({{ name }} *){{ name_lower }} completionHandler:(APIHandler)completion {
     self.completionHandler = completion;
     [self create{{ name }}:{{ name_lower }}];
 }"""
 
 UPDATE_METHOD = """
-- (void)update{{ name }}:({{ name }} *){{ name_lower }}
-{
+- (void)update{{ name }}:({{ name }} *){{ name_lower }} {
     NSString *path = {% if param %}[NSString stringWithFormat:URL_{{ app_name|upper }}_{{ name|upper }}, [{{ name_lower }} objectId]]{% else %}URL_{{ app_name|upper }}_{{ name|upper }}{% endif %};
     [self performRequestWithObject:{{ name_lower }} action:API_ACTION_UPDATE requestType:REQUEST_{{ app_name|upper }}_UPDATE_{{ name|upper }} path:path https:{% if https %}YES{% else %}NO{% endif %} login:{% if login %}YES{% else %}NO{% endif %} sign:{% if hmac %}YES{% else %}NO{% endif %}];
 }
 
-- (void)update{{ name }}:({{ name }} *){{ name_lower }} completionHandler:(APIHandler)completion
-{
+- (void)update{{ name }}:({{ name }} *){{ name_lower }} completionHandler:(APIHandler)completion {
     self.completionHandler = completion;
     [self update{{ name }}:{{ name_lower }}];
 }"""
 
 DELETE_METHOD = """
-- (void)delete{{ name }}:({{ name }} *){{ name_lower }}
-{
+- (void)delete{{ name }}:({{ name }} *){{ name_lower }} {
     [self performRequestWithObject:nil action:API_ACTION_DELETE requestType:REQUEST_{{ app_name|upper }}_DELETE_{{ name|upper }} path:[NSString stringWithFormat:URL_{{ app_name|upper }}_{{ name|upper }}, [{{ name_lower }} objectId]] https:{% if https %}YES{% else %}NO{% endif %} login:{% if login %}YES{% else %}NO{% endif %} sign:NO];
 }
 
-- (void)delete{{ name }}:({{ name }} *){{ name_lower }} completionHandler:(APIHandler)completion
-{
+- (void)delete{{ name }}:({{ name }} *){{ name_lower }} completionHandler:(APIHandler)completion {
     self.completionHandler = completion;
     [self delete{{ name }}:{{ name_lower }}];
 }"""
 
 READ_RELATED_LIST_METHOD = """
-- (void)read{{ name_plural }}For{{ parent_name }}/1
-{
+- (void)read{{ name_plural }}For{{ parent_name }}/1 {
     NSString *path = {% if param %}[NSString stringWithFormat:URL_{{ app_name|upper }}_{{ parent_name|upper }}_{{ name_plural|upper }}_WITH_{{ param|upper }}, {{ parent_name_lower }}{{ param }}]{% else %}URL_{{ app_name|upper }}_{{ parent_name|upper }}_{{ name_plural|upper }}{% endif %};
     [self performRequestWithObject:nil action:API_ACTION_LIST requestType:REQUEST_{{ app_name|upper }}_READ_{{ parent_name|upper }}_{{ name_plural|upper }} path:path https:{% if https %}YES{% else %}NO{% endif %} login:{% if login %}YES{% else %}NO{% endif %} sign:NO];
 }
 
-- (void)read{{ name_plural }}For{{ parent_name }}/2
-{
+- (void)read{{ name_plural }}For{{ parent_name }}/2 {
     self.requestParams = params;
     [self read{{ name_plural }}For{{ parent_name }}{% if param %}With{{ param }}:{{ parent_name_lower }}{{ param }}{% endif %}];
 }
 
-- (void)read{{ name_plural }}For{{ parent_name }}/2 completionHandler:(APIListHandler)completion
-{
+- (void)read{{ name_plural }}For{{ parent_name }}/2 completionHandler:(APIListHandler)completion {
     self.requestParams = params;
     self.listHandler = completion;
     [self read{{ name_plural }}For{{ parent_name }}{% if param %}With{{ param }}:{{ parent_name_lower }}{{ param }}{% endif %}];
 }""".replace('/1', WITH_PARENT_PARAM).replace('/2', WITH_PARENT_PARAM_PARAMS)
 
 CREATE_RELATED_METHOD = """
-- (void)create{{ name }}/1:({{ name }} *){{ name_lower }}/2
-{
+- (void)create{{ name }}/1:({{ name }} *){{ name_lower }}/2 {
     NSString *path = {% if param %}[NSString stringWithFormat:URL_{{ app_name|upper }}_{{ parent_name|upper }}_{{ name_plural|upper }}_WITH_{{ param|upper }}, {{ parent_name_lower }}{{ param }}]{% else %}URL_{{ app_name|upper }}_{{ parent_name|upper }}_{{ name_plural|upper }}{% endif %};
     [self performRequestWithObject:{{ name_lower }} action:API_ACTION_CREATE requestType:REQUEST_{{ app_name|upper }}_CREATE_{{ parent_name|upper }}_{{ name|upper }} path:path https:{% if https %}YES{% else %}NO{% endif %} login:{% if login %}YES{% else %}NO{% endif %} sign:{% if hmac %}YES{% else %}NO{% endif %}];
 }
 
-- (void)create{{ name }}/1:({{ name }} *){{ name_lower }}/2 completionHandler:(APIHandler)completion
-{
+- (void)create{{ name }}/1:({{ name }} *){{ name_lower }}/2 completionHandler:(APIHandler)completion {
     self.completionHandler = completion;
     {% if param %}[self create{{ name }}:{{ name_lower }} for{{ parent_name }}With{{ param }}:{{ parent_name_lower }}{{ param }}]{% else %}[self create{{ name }}For{{ parent_name }}:{{ name_lower }}]{% endif %};
 }""".replace('/1', FOR_PARENT).replace('/2', FOR_PARENT_PARAM)
 
 READ_RELATED_OBJECT_METHOD = """
-- (void)read{{ name }}For{{ parent_name }}/1
-{
+- (void)read{{ name }}For{{ parent_name }}/1 {
     NSString *path = {% if param %}[NSString stringWithFormat:URL_{{ app_name|upper }}_{{ parent_name|upper }}_{{ name|upper }}_WITH_{{ param|upper }}, {{ parent_name_lower }}{{ param }}]{% else %}URL_{{ app_name|upper }}_{{ parent_name|upper }}_{{ name|upper }}{% endif %};
     [self performRequestWithObject:nil action:API_ACTION_READ requestType:REQUEST_{{ app_name|upper }}_READ_{{ parent_name|upper }}_{{ name|upper }} path:path https:{% if https %}YES{% else %}NO{% endif %} login:{% if login %}YES{% else %}NO{% endif %} sign:NO];
 }
 
-- (void)read{{ name }}For{{ parent_name }}/2
-{
+- (void)read{{ name }}For{{ parent_name }}/2 {
     self.readHandler = completion;
     [self read{{ name }}For{{ parent_name }}{% if param %}With{{ param }}:{{ parent_name_lower }}{{ param }}{% endif %}];
 }""".replace('/1', WITH_PARENT_PARAM).replace('/2', WITH_PARENT_PARAM_COMPLETION)
 
 UPDATE_RELATED_METHOD = """
-- (void)update{{ name }}/1:({{ name }} *){{ name_lower }}/2
-{
+- (void)update{{ name }}/1:({{ name }} *){{ name_lower }}/2 {
     NSString *path = {% if param %}[NSString stringWithFormat:URL_{{ app_name|upper }}_{{ parent_name|upper }}_{{ name|upper }}_WITH_{{ param|upper }}, {{ parent_name_lower }}{{ param }}]{% else %}URL_{{ app_name|upper }}_{{ parent_name|upper }}_{{ name|upper }}{% endif %};
     [self performRequestWithObject:{{ name_lower }} action:API_ACTION_UPDATE requestType:REQUEST_{{ app_name|upper }}_UPDATE_{{ parent_name|upper }}_{{ name|upper }} path:path https:{% if https %}YES{% else %}NO{% endif %} login:{% if login %}YES{% else %}NO{% endif %} sign:{% if hmac %}YES{% else %}NO{% endif %}];
 }
 
-- (void)update{{ name }}/1:({{ name }} *){{ name_lower }}/2 completionHandler:(APIHandler)completion
-{
+- (void)update{{ name }}/1:({{ name }} *){{ name_lower }}/2 completionHandler:(APIHandler)completion {
     self.completionHandler = completion;
     [self update{{ name }}{% if param %} for{{ parent_name }}With{{ param }}:{{ parent_name_lower }}{{ param }}{% else %}For{{ parent_name }}:{{ name_lower }}{% endif %}];
 }""".replace('/1', FOR_PARENT).replace('/2', FOR_PARENT_PARAM)

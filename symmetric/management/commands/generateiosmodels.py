@@ -8,16 +8,13 @@ from symmetric.management.generatemodels import GenerateModelsCommand
 from symmetric.management.translate import data_to_objc
 
 
-included_field_setter = """{% if included %}- (void)set{{ name|title }}:({{ included_name }} *)new{{ name|title }}
-{
-    if([new{{ name|title }} isKindOfClass:[NSDictionary class]])
-    {
+included_field_setter = """{% if included %}- (void)set{{ name|title }}:({{ included_name }} *)new{{ name|title }} {
+    if ([new{{ name|title }} isKindOfClass:[NSDictionary class]]) {
         NSDictionary *dictionary = (NSDictionary *)new{{ name|title }};
         new{{ name|title }} = [[[{{ prefix }}{{ included_name }} alloc] init] autorelease];
         [new{{ name|title }} setValuesForKeysWithDictionary:dictionary];
     }
-    if(_{{ name }} != new{{ name|title }})
-    {
+    if (_{{ name }} != new{{ name|title }}) {
         [_{{ name }} release];
         _{{ name }} = [new{{ name|title }} retain];
     }
@@ -112,10 +109,10 @@ class Command(BaseCommand, GenerateModelsCommand):
             'ArrayField': Template(decode_mutable_base % ('self.', 'Object')),
             'Field': ''
         }
-        url_encoded_data_string = 'if(_{{name}})\n\t[args addObject:[NSString stringWithFormat:@"{{name}}=%@", [_{{name}} stringByAddingPercentEncodingWithAllowedCharacters:NSCharacterSet.URLQueryAllowedCharacterSet]]];{% if null %}\nelse\n\t[args addObject:@"{{name}}=NULL"];{% endif %}'
-        url_encoded_data_date = 'if(_{{name}})\n\t[args addObject:[NSString stringWithFormat:@"{{name}}=%@", [[[API dateFormatter] stringFromDate:_{{name}}] stringByAddingPercentEncodingWithAllowedCharacters:NSCharacterSet.URLQueryAllowedCharacterSet]]];{% if null %}\nelse\n\t[args addObject:@"{{name}}=NULL"];{% endif %}'
+        url_encoded_data_string = 'if (_{{name}}) {\n\t[args addObject:[NSString stringWithFormat:@"{{name}}=%@", [_{{name}} stringByAddingPercentEncodingWithAllowedCharacters:NSCharacterSet.URLQueryAllowedCharacterSet]]];\n}{% if null %} else {\n\t[args addObject:@"{{name}}=NULL"];\n}{% endif %}'
+        url_encoded_data_date = 'if (_{{name}}) {\n\t[args addObject:[NSString stringWithFormat:@"{{name}}=%@", [[[API dateFormatter] stringFromDate:_{{name}}] stringByAddingPercentEncodingWithAllowedCharacters:NSCharacterSet.URLQueryAllowedCharacterSet]]];\n}{% if null %} else {\n\t[args addObject:@"{{name}}=NULL"];\n}{% endif %}'
         url_encoded_data_number = '[args addObject:[NSString stringWithFormat:@"{{name}}=%s", _{{name}}]];'
-        url_encoded_data_json = 'if(_{{name}})\n\t[args addObject:[NSString stringWithFormat:@"{{name}}=%@", [[NSString stringWithJSONObject:_{{name}}] stringByAddingPercentEncodingWithAllowedCharacters:NSCharacterSet.URLQueryAllowedCharacterSet]]];{% if null %}\nelse\n\t[args addObject:@"{{name}}=NULL"];{% endif %}'
+        url_encoded_data_json = 'if (_{{name}}) {\n\t[args addObject:[NSString stringWithFormat:@"{{name}}=%@", [[NSString stringWithJSONObject:_{{name}}] stringByAddingPercentEncodingWithAllowedCharacters:NSCharacterSet.URLQueryAllowedCharacterSet]]];\n}{% if null %} else {\n\t[args addObject:@"{{name}}=NULL"];\n}{% endif %}'
         url_encoded_data_json_included =  '[args addObject:@"{{name}}=%@", [[NSString stringWithJSONObject:_{{name}}] stringByAddingPercentEncodingWithAllowedCharacters:NSCharacterSet.URLQueryAllowedCharacterSet]];'
         url_encoded_data_null = '[args addObject:@"{{name}}=NULL"];'
         url_encoded_data_mapping = {
@@ -127,7 +124,7 @@ class Command(BaseCommand, GenerateModelsCommand):
             'DecimalField': Template(url_encoded_data_number % '%f'),
             'FloatField': Template(url_encoded_data_number % '%f'),
             'BooleanField': '[args addObject:[NSString stringWithFormat:@"{name}=%@", (_{name}?@"true":@"false")]];',
-            'ForeignKey': Template('{% if included %}{% if included_readonly %}if(_{{included_obj_name}}) [args addObject:[NSString stringWithFormat:@"{{name}}=%u", _{{included_obj_name}}.objectId]]; else ' + url_encoded_data_null + ' {% else %}' + url_encoded_data_json_included + '{% endif %}{% else %}if(!_{{name}}) ' + url_encoded_data_null + ' else ' + (url_encoded_data_number % '%u') + '{% endif %}'),
+            'ForeignKey': Template('{% if included %}{% if included_readonly %}if (_{{included_obj_name}}) [args addObject:[NSString stringWithFormat:@"{{name}}=%u", _{{included_obj_name}}.objectId]]; else ' + url_encoded_data_null + ' {% else %}' + url_encoded_data_json_included + '{% endif %}{% else %}if (!_{{name}}) ' + url_encoded_data_null + ' else ' + (url_encoded_data_number % '%u') + '{% endif %}'),
             'JSONField': Template(url_encoded_data_json),
             'ArrayField': Template(url_encoded_data_json),
             'Field': '',

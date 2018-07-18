@@ -10,9 +10,8 @@ using System.Windows.Threading;
 
 namespace {{ namespace }}
 {
-    [DataContract]
-    class {{ name }}
-    {% templatetag openbrace %}{% for property in properties %}
+	[DataContract]
+	class {{ name }} {% templatetag openbrace %}{% for property in properties %}
 		{{ property }}{% endfor %}
-    }
+	}
 }

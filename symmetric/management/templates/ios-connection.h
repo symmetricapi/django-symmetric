@@ -7,8 +7,7 @@
 #import "APIRequestParams.h"{% for import in imports %}
 {{ import }}{% endfor %}
 
-enum {{ name }}RequestType : NSUInteger
-{
+enum {{ name }}RequestType : NSUInteger {
 	REQUEST_{{ name|upper }}_NONE,{% for request_type in request_types %}
 	{{ request_type }}{% if not forloop.last %},{% endif %}{% endfor %}
 };

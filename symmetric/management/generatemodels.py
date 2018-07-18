@@ -42,6 +42,13 @@ class GenerateModelsCommand(object):
             action='append',
             help='Do not output anything for the models specified.',
         ),
+        make_option(
+            '--indent',
+            dest='indent',
+            type='int',
+            default=2,
+            help='Each tab should instead indent with this number of spaces or 0 for hard tabs.',
+        ),
     )
 
     def get_include_related_models(self, model):
@@ -55,6 +62,8 @@ class GenerateModelsCommand(object):
         return related_models
 
     def post_render(self, output):
+        if self.indent:
+            return output.replace('\t', ' ' * self.indent)
         return output
 
     def base_extra_context(self, model, api_model):
@@ -199,6 +208,7 @@ class GenerateModelsCommand(object):
     def render(self, *args, **options):
         self.camelcase = getattr(settings, 'API_CAMELCASE', True)
         self.prefix = options['prefix']
+        self.indent = options['indent']
         if not hasattr(self, 'templates'):
             raise CommandError('No templates set!')
         if options and options['dest']:

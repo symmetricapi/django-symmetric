@@ -64,10 +64,19 @@ class GenerateConnectionsCommand(object):
             dest='dest',
             help='Output all connections for the detected apps with api endpoints and render them into this destination directory.',
         ),
+        make_option(
+            '--indent',
+            dest='indent',
+            type='int',
+            default=2,
+            help='Each tab should instead indent with this number of spaces or 0 for hard tabs.',
+        ),
     )
     ALL_ACTIONS = ('READ_OBJECT', 'READ_LIST', 'CREATE', 'UPDATE', 'DELETE', 'READ_RELATED_OBJECT', 'UPDATE_RELATED', 'READ_RELATED_LIST', 'CREATE_RELATED')
 
     def post_render(self, output):
+        if self.indent:
+            return output.replace('\t', ' ' * self.indent)
         return output
 
     def perform_mapping(self, mapping, format_context):
@@ -211,6 +220,7 @@ class GenerateConnectionsCommand(object):
     def render(self, *args, **options):
         if not hasattr(self, 'templates'):
             raise CommandError('No templates set!')
+        self.indent = options['indent']
         app_renames = {arg.split('=')[0]:arg.split('=')[1] for arg in args if arg.find('=') != -1}
         if options and options['dest']:
             try:
