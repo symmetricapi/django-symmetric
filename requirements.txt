@@ -1,2 +1,2 @@
-Django==1.8.9
+Django==1.11.29
 wheel==0.26.0
